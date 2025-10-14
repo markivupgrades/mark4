@@ -293,16 +293,23 @@ def create_slideshow():
 @app.route('/display-toggle', methods=['POST'])
 def toggle_display():
     import subprocess
+    import os
     from flask import request
+
+    env = os.environ.copy()
+    env["DISPLAY"] = ":0"
+    env["XDG_RUNTIME_DIR"] = "/run/user/1000"
 
     data = request.get_json()
     display_muted = data.get("displayMuted")
 
-    cmd = ["vcgencmd", "display_power", "0" if display_muted else "1"]
+    cmd = ["/usr/bin/wlr-randr", "--output", "HDMI-A-1", "--off"] if display_muted else \
+          ["/usr/bin/wlr-randr", "--output", "HDMI-A-1", "--on"]
 
     try:
         result = subprocess.run(
             cmd,
+            env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True
@@ -426,7 +433,33 @@ def save_custom_order():
 
 @app.route('/browse')
 def browse():
-    return render_template('Browse.html')
+    config = load_config()
+    folder = config.get('current_folder')
+    if not folder:
+        return render_template('Browse.html', images=[], current=None, current_index=0)
+
+    order_path = os.path.join(BASE_DIR, 'image_order.txt')
+    try:
+        with open(order_path, 'r') as f:
+            images = [line.strip() for line in f if line.strip()]
+    except Exception as e:
+        app.logger.error(f"Failed to read image_order.txt: {e}")
+        images = []
+
+    try:
+        with open(os.path.join(BASE_DIR, 'static', 'current_filename.txt')) as f:
+            current_filename = f.read().strip()
+        current_index = images.index(current_filename)
+    except Exception as e:
+        app.logger.warning(f"Could not resolve current image: {e}")
+        current_filename = None
+        current_index = 0
+
+    return render_template('Browse.html',
+                           images=images,
+                           current=current_filename,
+                           current_index=current_index,
+                           folder=folder)
 
 @app.route('/set_delay', methods=['POST'])
 def set_delay():
@@ -573,28 +606,32 @@ def previous_image():
     try:
         with open(order_path, 'r') as f:
             images = f.read().strip().split()
-    except:
+    except Exception as e:
+        app.logger.error(f"Error reading image_order.txt: {e}")
         return jsonify({'image': None})
 
     if not images:
         return jsonify({'image': None})
 
     try:
-        with open(os.path.join(BASE_DIR, 'static', 'current_filename.txt')) as f:
+        with open(os.path.join(BASE_DIR, 'static', 'current_image.txt')) as f:
             current_name = f.read().strip()
         idx = images.index(current_name)
         prev_idx = (idx - 1) % len(images)
-    except:
+    except Exception as e:
+        app.logger.warning(f"Could not find current image in list: {e}")
         prev_idx = 0
 
     image_path = os.path.join(UPLOAD_ROOT, folder, images[prev_idx])
     update_viewer_state(image_path, reset_delay=False)
 
+    # 🕒 Touch delay_updated.flag to reset slideshow timer
+    flag_path = os.path.join(BASE_DIR, 'delay_updated.flag')
     try:
         from pathlib import Path
-        Path(os.path.join(BASE_DIR, 'delay_updated.flag')).touch()
-    except:
-        pass
+        Path(flag_path).touch()
+    except Exception as e:
+        app.logger.error(f"Failed to touch delay_updated.flag: {e}")
 
     return jsonify({'image': url_for('static', filename='current.jpg')})
 
@@ -636,9 +673,18 @@ def api_thumbnails():
         extras = [f for f in images if f not in ordered]
         images = ordered + sorted(extras)
 
+    # ✅ Apply random (playlist) order if requested
+    elif sort == 'random':
+        order_path = os.path.join(BASE_DIR, 'image_order.txt')
+        if os.path.exists(order_path):
+            with open(order_path, 'r') as f:
+                playlist_order = [line.strip() for line in f if line.strip()]
+            images = [f for f in playlist_order if f in images]
+            extras = [f for f in os.listdir(folder_path)
+                      if not f.startswith('.') and is_image(f) and f not in images]
+            images += sorted(extras)
 
-
-    if sort == 'newest':
+    elif sort == 'newest':
         images.sort(key=lambda f: os.path.getmtime(os.path.join(folder_path, f)), reverse=True)
     elif sort == 'oldest':
         images.sort(key=lambda f: os.path.getmtime(os.path.join(folder_path, f)))
@@ -646,7 +692,6 @@ def api_thumbnails():
         images.sort()
     elif sort == 'za':
         images.sort(reverse=True)
-
 
     total = len(images)
 
