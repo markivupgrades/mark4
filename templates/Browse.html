@@ -374,7 +374,6 @@ function loadThumbnails(sort = 'newest') {
       const container = document.getElementById('thumbnail-scroll');
       document.getElementById('photo-count').textContent = `${data.total} Photos`;
 
-      // ✅ Track full image list across pages
       if (page === 1) {
         fullImageList = data.images;
       } else {
@@ -412,27 +411,20 @@ function loadThumbnails(sort = 'newest') {
             }, { once: true });
           });
 
-          img.addEventListener('dragover', e => {
-            e.preventDefault();
-          });
-
+          img.addEventListener('dragover', e => e.preventDefault());
           img.addEventListener('drop', e => {
             e.preventDefault();
             if (draggedImg && draggedImg !== img) {
               const container = img.parentNode;
               container.insertBefore(draggedImg, img.nextSibling);
 
-              // ✅ Debounced save trigger after DOM update
               if (window.saveTimer) clearTimeout(window.saveTimer);
-
               window.saveTimer = setTimeout(() => {
                 const domOrder = Array.from(document.querySelectorAll('.thumbnail-scroll img'))
                   .map(img => img.getAttribute('data-filename'));
-
                 const untouched = fullImageList.filter(f => !domOrder.includes(f));
                 const orderedFilenames = domOrder.concat(untouched);
 
-                console.log('Saving order:', orderedFilenames);
                 fetch('/save-custom-order', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -440,12 +432,6 @@ function loadThumbnails(sort = 'newest') {
                     folder: currentFolder,
                     order: orderedFilenames
                   })
-                }).then(res => {
-                  if (res.ok) {
-                    console.log('Custom order saved');
-                  } else {
-                    console.error('Failed to save custom order');
-                  }
                 });
               }, 2000);
             }
@@ -465,27 +451,39 @@ function loadThumbnails(sort = 'newest') {
             }
             updateDeleteUI();
           } else {
-            document.querySelectorAll('.thumbnail-scroll img').forEach(el => {
-              el.classList.remove('selected');
-            });
+            document.querySelectorAll('.thumbnail-scroll img').forEach(el => el.classList.remove('selected'));
             img.classList.add('selected');
 
             fetch('/show', {
               method: 'POST',
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
               body: `path=${encodeURIComponent(filename)}`
-            }).then(res => {
-              if (res.ok) {
-                console.log(`Displayed: ${filename}`);
-              } else {
-                console.error('Failed to display image');
-              }
             });
           }
         };
 
         container.appendChild(img);
       });
+
+      // 🧭 Highlight and scroll to current image
+      if (page === 1) {
+        fetch('/static/current_filename.txt')
+          .then(res => res.text())
+          .then(currentFilename => {
+            const thumbs = Array.from(document.querySelectorAll('.thumbnail-scroll img'));
+            const index = thumbs.findIndex(img => img.getAttribute('data-filename') === currentFilename.trim());
+
+            if (index >= 0) {
+              thumbs.forEach(img => img.classList.remove('selected'));
+              thumbs[index].classList.add('selected');
+
+              const scrollTarget = thumbs[Math.max(index - 1, 0)];
+              if (scrollTarget) {
+                scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }
+          });
+      }
 
       page++;
       loading = false;
@@ -588,6 +586,20 @@ function updateDeleteUI() {
   document.getElementById('deleteModal').style.display = 'flex';
 };
 
+function highlightAndScroll(currentFilename) {
+  const thumbs = Array.from(document.querySelectorAll('.thumbnail-scroll img'));
+  const index = thumbs.findIndex(img => img.getAttribute('data-filename') === currentFilename);
+
+  if (index >= 0) {
+    thumbs.forEach(img => img.classList.remove('selected'));
+    thumbs[index].classList.add('selected');
+
+    const scrollTarget = thumbs[Math.max(index - 1, 0)];
+    if (scrollTarget) {
+      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+}
 
 window.addEventListener('DOMContentLoaded', () => {
   Promise.all([
@@ -616,30 +628,30 @@ window.addEventListener('DOMContentLoaded', () => {
     // ✅ Rebuild sort dropdown based on current folder
     sortSelect.innerHTML = '';
 
-    const options = [
-      { value: 'newest', label: 'Newest' },
-      { value: 'oldest', label: 'Oldest' },
-      { value: 'az', label: 'A–Z' },
-      { value: 'za', label: 'Z–A' }
-    ];
+const options = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'oldest', label: 'Oldest' },
+  { value: 'az', label: 'A–Z' },
+  { value: 'za', label: 'Z–A' },
+  { value: 'random', label: 'Random' }  // ✅ Add this
+];
 
     if (current !== 'main') {
       options.unshift({ value: 'custom', label: 'Custom' });
     }
 
-    options.forEach(opt => {
-      const option = document.createElement('option');
-      option.value = opt.value;
-      option.textContent = opt.label;
-      sortSelect.appendChild(option);
-    });
+options.forEach(opt => {
+  const option = document.createElement('option');
+  option.value = opt.value;
+  option.textContent = opt.label;
+  sortSelect.appendChild(option);
+});
 
-    // ✅ Set default sort
-    sortSelect.value = (current === 'main') ? 'newest' : 'custom';
-    currentSort = sortSelect.value;
+sortSelect.value = (current === 'main') ? 'random' : 'custom';
+currentSort = sortSelect.value;
 
-    select.addEventListener('change', handleFolderChange);
-    loadThumbnails(currentSort);  // ✅ This is now the only call
+select.addEventListener('change', handleFolderChange);
+loadThumbnails(currentSort);
   });
 });
 
