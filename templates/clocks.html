@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Choose Your Clock</title>
+  <style>
+    html {
+      font-size: 22px;
+    }
+
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: radial-gradient(circle at center, #fffbcc 0%, #ffccf9 40%, #cce5ff 80%);
+      background-size: 200% 200%;
+      animation: swirl 10s ease-in-out infinite;
+    }
+
+    @keyframes swirl {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .clock-form {
+      background: rgba(10, 10, 10, 0.2);
+      padding: 2em;
+      border-radius: 12px;
+      max-width: 900px;
+      margin: auto;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+      transform: scale(0.98);
+      filter: blur(1px);
+      opacity: 0;
+      animation: fadeInForm 2.5s ease 0.5s forwards;
+      border: 1px solid #3a3f2c;
+      min-height: 85vh; /* ADDED */
+    }
+
+    @keyframes fadeInForm {
+      from {
+        opacity: 0;
+        transform: scale(0.98);
+        filter: blur(2px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+      }
+    }
+
+    .clock-form h2 {
+      text-align: center;
+      margin-bottom: 1em;
+      color: white;
+      font-size: 2.6em;
+    }
+
+    .clock-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1em;
+    }
+
+    .clock-button {
+      background: #e9f0f7;
+      border: 1px solid #888;
+      padding: 0.5em 0.8em;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.3s;
+      font-size: 1.68em;
+      line-height: 1;
+      height: 140px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-sizing: border-box;
+      align-items: center;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    a.clock-button {
+      height: 140px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .clock-button:hover {
+      background: #d0e4f2;
+    }
+
+    .emoji {
+      font-size: 2em;
+      margin-bottom: 0.2em;
+    }
+
+    #clockDuration {
+      color: #606060;
+      font-size: 1.6em;
+      width: 2.8em; /* UPDATED */
+      text-align: center; /* CENTERED */
+      vertical-align: middle; /* BETTER ALIGNMENT */
+    }
+
+    body.poof-active {
+      padding: 0 !important;
+      overflow: hidden;
+    }
+
+    #poofOverlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: black;
+      color: gray;
+      z-index: 10000;
+      font-family: monospace, monospace;
+      font-size: 4rem;
+      font-weight: bold;
+      text-align: center;
+      user-select: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #poofOverlay .poof-text {
+      line-height: 1;
+    }
+
+    #poofOverlay .poof-emoji {
+      font-size: 6rem;
+      margin-top: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <div class="clock-form">
+    <h2>Select a Clock Style</h2>
+    <div class="clock-grid">
+      <button class="clock-button" onclick="launchClock('RolexWOOD')"><span class="emoji">🪵</span>Wood</button>
+      <button class="clock-button" onclick="launchClock('RolexBLUEDIAMOND')"><span class="emoji">💎</span>Blue Diamond</button>
+      <button class="clock-button" onclick="launchClock('PalmPilot')"><span class="emoji">🌴</span>Palm</button>
+      <button class="clock-button" onclick="launchClock('RolexCRAZY')"><span class="emoji">🫧</span>Bubbles</button>
+      <button class="clock-button" onclick="launchClock('RolexGOLD')"><span class="emoji">🥇</span>Gold</button>
+      <button class="clock-button" onclick="launchClock('RolexBLUE')"><span class="emoji">🔵</span>Blue Metal</button>
+      <button class="clock-button" onclick="launchClock('Rolex1908')"><span class="emoji">📜</span>1908</button>
+      <button class="clock-button" onclick="launchClock('PatekRotate')"><span class="emoji">⌚</span>Patek Philippe</button>
+      <button class="clock-button" onclick="launchClock('PlainClock')"><span class="emoji">🕓</span>Basic</button>
+      <button class="clock-button" onclick="goToMessage()"><span class="emoji">💬</span>Message</button>
+      <button class="clock-button" onclick="goToBillboard()"><span class="emoji">🪧</span>Billboard</button>
+      <a href="/" class="clock-button" onclick="showPoof(event)"><span class="emoji">⛔</span>CANCEL</a>
+    </div>
+
+<div id="messageOptions" style="display: none; margin-top: 2em; text-align: center;">
+  <label for="presetMessage" style="font-size: 1.6em; color: white;">Choose a message:</label><br>
+  <select id="presetMessage" onchange="toggleCustomMessage()" style="font-size: 1.4em; padding: 0.4em; border-radius: 6px;">
+    <option value="You should probably get going.">You should probably get going.</option>
+    <option value="It's time to care.">It's time to care.</option>
+    <option value="Where has the day gone?">Where has the day gone?</option>
+    <option value="No need to stare.">No need to stare.</option>
+    <option value="Good day all!">Good day all!</option>
+    <option value="South Burlington Local Time">South Burlington Local Time</option>
+    <option value="Is it time yet?">Is it time yet?</option>
+    <option value="Hi yo! I got plenty of time!">Hi yo! I got plenty of time!</option>
+    <option value="Do you find this happens all the time?">Do you find this happens all the time?</option>
+    <option value="It's probably about time.">It's probably about time.</option>
+    <option value="Look at these hands, Jerry!">Look at these hands, Jerry!</option>
+    <option value="Custom">Custom...</option>
+  </select>
+
+  <div id="customMessageContainer" style="margin-top: 1em; display: none;">
+    <input type="text" id="customMessage" placeholder="Type your message..." style="font-size: 1.4em; padding: 0.4em; border-radius: 6px; width: 60%;">
+  </div>
+</div>
+
+
+   <!-- CLOCK DURATION CONTROL (Mobile Optimized & Spaced Lower) -->
+<div style="margin-top: 5em; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 0.4em; flex-wrap: wrap;">
+  <span style="font-size: 2.1em;">Clock exits after</span>
+  <select id="clockDuration" name="clockDuration" style="font-size: 1.6em; padding: 0.2em; border-radius: 4px; text-align-last: center; width: 3.8em;">
+
+    <!-- Values 1 to 30 -->
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="4">4</option>
+    <option value="5">5</option>
+    <option value="6">6</option>
+    <option value="7">7</option>
+    <option value="8">8</option>
+    <option value="9">9</option>
+    <option value="10">10</option>
+    <option value="11">11</option>
+    <option value="12">12</option>
+    <option value="13">13</option>
+    <option value="14">14</option>
+    <option value="15">15</option>
+    <option value="16">16</option>
+    <option value="17">17</option>
+    <option value="18">18</option>
+    <option value="19">19</option>
+    <option value="20">20</option>
+    <option value="21">21</option>
+    <option value="22">22</option>
+    <option value="23">23</option>
+    <option value="24">24</option>
+    <option value="25">25</option>
+    <option value="26">26</option>
+    <option value="27">27</option>
+    <option value="28">28</option>
+    <option value="29">29</option>
+    <option value="30" selected>30</option>
+  </select>
+  <span style="font-size: 2.1em;">min.</span>
+</div>
+
+
+  <!-- *POOF* OVERLAY -->
+  <div id="poofOverlay">
+    <div class="poof-text">*poof*</div>
+    <div class="poof-emoji">💭</div>
+  </div>
+
+  <!-- JAVASCRIPT -->
+<script>
+  function launchClock(name) {
+    const duration = document.getElementById('clockDuration').value;
+    let message = '';
+
+    if (name === 'ClockText' || name === 'Message2') {
+      const preset = document.getElementById('presetMessage').value;
+      message = preset === 'Custom' ? document.getElementById('customMessage').value : preset;
+    }
+
+    const encodedMessage = encodeURIComponent(message);
+    window.location.href = `/launch/${name}?duration=${duration}&message=${encodedMessage}`;
+  }
+
+  function toggleCustomMessage() {
+    const preset = document.getElementById('presetMessage').value;
+    const customContainer = document.getElementById('customMessageContainer');
+    customContainer.style.display = preset === 'Custom' ? 'block' : 'none';
+  }
+
+  document.querySelectorAll('.clock-button').forEach(button => {
+    button.addEventListener('click', () => {
+      const name = button.getAttribute('onclick')?.match(/launchClock\('(.+?)'\)/)?.[1];
+      const showMessageOptions = name === 'ClockText' || name === 'Message2';
+      document.getElementById('messageOptions').style.display = showMessageOptions ? 'block' : 'none';
+    });
+  });
+
+   function goToMessage() {
+     const duration = document.getElementById('clockDuration').value;
+     window.location.href = `/message?duration=${duration}`;
+   }
+
+   function goToBillboard() {
+     const duration = document.getElementById('clockDuration').value;
+     window.location.href = `/billboard?duration=${duration}`;
+   }
+
+
+  function showPoof(e) {
+  e.preventDefault();
+  document.body.classList.add('poof-active'); // ✅ Remove padding
+  const poof = document.getElementById('poofOverlay');
+  poof.style.display = 'flex';
+
+  fetch('/cancel', { method: 'GET' })
+    .then(() => {
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 400);
+    });
+}
+
+
+</script>
+
+</body>
+</html>

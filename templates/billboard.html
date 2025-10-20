@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Billboard Message</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: linear-gradient(to bottom right, #1a237e, #e0ffff);
+      background-size: 200% 200%;
+      animation: swirl 10s ease-in-out infinite;
+      padding: 2em;
+      text-align: center;
+    }
+
+    @keyframes swirl {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    h2 {
+      font-size: 2.4em;
+      margin-bottom: 1em;
+      color: #fff;
+    }
+
+    label {
+      font-size: 1.4em;
+      margin-top: 1em;
+      display: block;
+      color: #eee;
+    }
+
+    input[type="text"], select {
+      font-size: 1.2em;
+      padding: 0.4em;
+      margin-top: 0.4em;
+      border-radius: 6px;
+      border: 1px solid #aaa;
+      width: 60%;
+      max-width: 500px;
+    }
+
+    .radio-group {
+      margin-top: 0.6em;
+      display: flex;
+      justify-content: center;
+      gap: 2em;
+      color: #eee;
+    }
+
+    .radio-group label {
+      font-size: 1.2em;
+    }
+
+    button {
+      margin-top: 2em;
+      font-size: 1.4em;
+      padding: 0.6em 1.2em;
+      border-radius: 8px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h2>Create Your Billboard Message</h2>
+
+  <form action="/launch_billboard" method="get">
+    <label for="message">Message Text:</label>
+    <textarea id="message" name="message" placeholder="Type your message..." rows="4" style="font-size: 1.4em; padding: 0.4em; border-radius: 6px; width: 100%;" required></textarea>
+
+    <label for="font">Font:</label>
+    <select id="font" name="font">
+      <option value="Copperplate">Copperplate</option>
+      <option value="Optima">Optima</option>
+      <option value="Courier">Courier</option>
+      <option value="Helvetica">Helvetica</option>
+      <option value="Times">Times</option>
+      <option value="Verdana">Verdana</option>
+    </select>
+
+    <label>Font Size:</label>
+    <div class="radio-group">
+      <label><input type="radio" name="size" value="128"> Regular</label>
+      <label><input type="radio" name="size" value="160" checked> Large</label>
+      <label><input type="radio" name="size" value="220"> Huge</label>
+    </div>
+
+    <label for="color">Font Color:</label>
+    <select id="color" name="color">
+      <option value="black">Black</option>
+      <option value="white" selected>White</option>
+      <option value="yellow">Yellow</option>
+      <option value="red">Red</option>
+      <option value="blue">Blue</option>
+      <option value="green">Green</option>
+    </select>
+
+    <label for="background">Background Style:</label>
+    <select id="background" name="background">
+      <option value="Message_Abstract" selected>Abstract</option>
+      <option value="Message_Orange">Orange</option>
+    </select>
+
+    <!-- Hidden duration input will be injected here -->
+    <input type="hidden" id="durationInput" name="duration" value="30">
+
+    <div style="margin-top: 3em;">
+      <button type="submit">Launch Billboard</button>
+    </div>
+  </form>
+
+  <script>
+    // Disable black font if Abstract background is selected
+    const backgroundSelect = document.getElementById('background');
+    const colorSelect = document.getElementById('color');
+
+    backgroundSelect.addEventListener('change', () => {
+      const isAbstract = backgroundSelect.value === 'Message_Abstract';
+      const blackOption = [...colorSelect.options].find(opt => opt.value === 'black');
+
+      if (isAbstract) {
+        blackOption.disabled = true;
+        if (colorSelect.value === 'black') {
+          colorSelect.value = 'white';
+        }
+      } else {
+        blackOption.disabled = false;
+      }
+    });
+
+    backgroundSelect.dispatchEvent(new Event('change'));
+
+    // Inject duration from URL into hidden input
+    const params = new URLSearchParams(window.location.search);
+    const duration = params.get('duration') || '30';
+    document.getElementById('durationInput').value = duration;
+  </script>
+</body>
+</html>

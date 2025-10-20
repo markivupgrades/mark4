@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Choose Your Message</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: radial-gradient(circle at center, #fff0f5 0%, #d0f0ff 100%);
+      padding: 2em;
+      text-align: center;
+    }
+    select, input, button {
+      font-size: 1.4em;
+      margin-top: 1em;
+      padding: 0.5em;
+      border-radius: 8px;
+    }
+    input[type="text"] {
+      width: 80%;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>Choose or Write Your Message</h2>
+
+  <select id="presetMessage" onchange="toggleCustomMessage()">
+    <option value="">-- Select a message --</option>
+    <option value="You should probably get going.">You should probably get going.</option>
+    <option value="It's time to care.">It's time to care.</option>
+    <option value="Where has the day gone?">Where has the day gone?</option>
+    <option value="No need to stare.">No need to stare.</option>
+    <option value="Good day all!">Good day all!</option>
+    <option value="South Burlington Local Time">South Burlington Local Time</option>
+    <option value="Is it time yet?">Is it time yet?</option>
+    <option value="Hi yo! I got plenty of time!">Hi yo! I got plenty of time!</option>
+    <option value="Do you find this happens all the time?">Do you find this happens all the time?</option>
+    <option value="It's probably about time.">It's probably about time.</option>
+    <option value="Look at these hands, Jerry!">Look at these hands, Jerry!</option>
+    <option value="Custom">Custom...</option>
+  </select>
+
+  <div id="customMessageContainer" style="display: none;">
+    <label for="customMessage">Your Message:</label><br>
+    <input type="text" id="customMessage" placeholder="Type a single-line message..." maxlength="120" />
+  </div>
+
+  <div style="margin-top: 2em;">
+    <button onclick="launchMessage()">Launch Message</button>
+  </div>
+
+  <script>
+    function toggleCustomMessage() {
+      const preset = document.getElementById('presetMessage').value;
+      const container = document.getElementById('customMessageContainer');
+      container.style.display = preset === 'Custom' ? 'block' : 'none';
+    }
+
+    function getDurationFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('duration') || '30';
+    }
+
+    function launchMessage() {
+      const preset = document.getElementById('presetMessage').value;
+      const message = preset === 'Custom'
+        ? document.getElementById('customMessage').value
+        : preset;
+
+      const encoded = encodeURIComponent(message);
+      const duration = getDurationFromURL();
+      window.location.href = `/launch/ClockText?message=${encoded}&duration=${duration}`;
+    }
+  </script>
+</body>
+</html>

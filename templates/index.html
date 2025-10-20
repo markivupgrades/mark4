@@ -1,0 +1,924 @@
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pi Photo Uploader</title>
+  <style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  padding: 1rem;
+  background: linear-gradient(
+    45deg,
+    #0a0a00,
+    #1f1f0f,
+    #3a3f2c,
+    #1f1f0f,
+    #0a0a00
+  );
+  background-size: 400% 400%;
+  animation: oliveSwirl 20s ease-in-out infinite;
+  color: #ccc;
+  position: relative;
+  z-index: 0;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle at 30% 30%, #1f1f0f 0%, transparent 70%),
+              radial-gradient(circle at 70% 70%, #3a3f2c 0%, transparent 70%);
+  background-size: 200% 200%;
+  animation: swirlLayer 25s ease-in-out infinite;
+  opacity: 0.3;
+}
+
+@keyframes oliveSwirl {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes swirlLayer {
+  0% {
+    background-position: 20% 30%;
+  }
+  25% {
+    background-position: 80% 70%;
+  }
+  50% {
+    background-position: 40% 20%;
+  }
+  75% {
+    background-position: 60% 80%;
+  }
+  100% {
+    background-position: 20% 30%;
+  }
+}
+
+
+
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: white;
+    }
+
+    .upload-box,
+    .controls,
+    .current-photo-box {
+      background: #424242;
+      padding: 0.5rem 1rem;
+      border: 2px solid #272727;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+    }
+
+    .upload-box h2 {
+      position: relative;
+      top: -10px;
+      text-align: center;
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: white;
+    }
+
+    .upload-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 1rem;
+      margin-top: 1rem;
+    }
+
+    .upload-row button {
+      position: relative;
+      top: -12px;
+      flex: 1;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      background-color: #265FAD;
+      color: white;
+      cursor: pointer;
+    }
+
+    .upload-row button:active {
+      background-color: #005bb5;
+    }
+
+#uploading-modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.4);
+  z-index: 9999;
+}
+
+.modal-content {
+  background: white;
+  padding: 1em 2em;
+  border-radius: 8px;
+  font-size: 1.2em;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+.dots span {
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.dots span:nth-child(3) {
+  animation: blink 1s infinite;
+}
+.dots span:nth-child(2) {
+  animation: blink 0.5s infinite;
+}
+.dots span:nth-child(1) {
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  0%   { opacity: 0; }
+  50%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
+    input[type="file"] {
+      display: none;
+    }
+
+    #preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 1rem;
+    }
+
+    #preview img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .grid button {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 2px solid #25327E;
+      border-radius: 6px;
+      background-color: #364ABA;
+      color: white;
+      cursor: pointer;
+    }
+
+    .grid button:active {
+      background-color: #005bb5;
+    }
+
+    .current-photo-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: #616161;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+      cursor: pointer;
+      position: relative;
+      top: -4px;
+      const photoBox = document.querySelector('.current-photo-box');
+      photoBox.style.pointerEvents = wantsToMute ? 'none' : 'auto';
+
+    }
+
+    .thumbnail-wrapper {
+      width: 150px;
+      height: 100px;
+      flex-shrink: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid black;        /* ✅ move border here */
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    .thumbnail-inner img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+
+    #muted-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+  color: light red;
+  text-align: center;
+}
+
+    .current-photo-label {
+      font-size: 1rem;
+      font-weight: bold;
+      color: white;
+      margin-right: 1rem;
+    }
+
+    .current-photo-thumbnail {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      box-sizing: border-box;
+      border: none;                   /* ✅ remove border from image */
+    }
+
+
+    .photo-label-and-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 100px; /* 👈 locks vertical rhythm */
+}
+
+
+    .trash-icon {
+      position: absolute;
+      bottom: 9px;
+      right: 9px;
+      font-size: 20px;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(4px);
+      border-radius: 6px;
+      padding: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,1.9);
+      cursor: pointer;
+      z-index: 10;
+      user-select: none;
+    }
+
+    #existingModal,
+    #newModal {
+      display: none;
+      opacity: 0;
+      background: #eaf4ff;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      margin-top: 1rem;
+    }
+
+    #existingModal.show,
+    #newModal.show {
+      display: block;
+      opacity: 1;
+    }
+
+    #newModal label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+      padding-left: 1rem;
+    }
+
+    #newModal input {
+  width: 100%;
+  max-width: 500px; /* or remove this line entirely */
+  margin: 0 auto 1rem auto;
+  padding: 0.75rem;
+  font-size: 1.25rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+  display: block;
+}
+
+    #existingModal select {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background-color: #f0f0f0;
+    }
+
+    #newModal .modal-buttons,
+    #existingModal .modal-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 1rem;
+    }
+
+    #newModal .modal-buttons button,
+    #existingModal .modal-buttons button {
+      flex: none;
+      min-width: 100px;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      background-color: #265FAD;
+      color: white;
+    }
+
+    #newModal .modal-buttons button.cancel,
+    #existingModal .modal-buttons button.cancel {
+      background-color: #555;
+    }
+
+    #newModal .modal-buttons button.cancel:hover,
+    #existingModal .modal-buttons button.cancel:hover {
+      background-color: #666;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .frame-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 1rem;
+      position: relative;
+      top: -4px;
+    }
+
+    .frame-actions button {
+      flex: none;
+      width: 160px;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      background-color: #BA8F36;
+      color: white;
+      cursor: pointer;
+    }
+
+    .frame-actions button:active {
+      background-color: #005bb5;
+    }
+
+    .slider-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 1.25rem;
+}
+
+.slider-container label,
+#durationLabel {
+  color: white;
+  position: static;
+  font-size: 16px;
+}
+
+
+    .controls {
+      background-color: #505050;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      position: relative;
+      top: -6px;
+    }
+
+    /* ✅ Updated deleteModal styles */
+    #deleteModal {
+      display: none;
+      background: #000;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      color: white;
+      max-width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+
+      position: relative;
+      top: -16px;
+      /* 👈 lift it slightly */
+      margin-top: 1rem;
+    }
+
+    #deleteModal.show {
+      display: block;
+    }
+
+    #deleteModal .modal-buttons {
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+      margin-top: 1rem;
+    }
+
+    #deleteModal .modal-buttons button {
+      padding: 0.4rem 1.25rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    #displayToggleBtn,
+    #restartFrameBtn {
+      white-space: nowrap;
+      min-width: 180px;
+      /* Adjust as needed to fit both labels */
+      text-align: center;
+    }
+
+    #deleteModal .modal-buttons button.cancel {
+      background-color: #555;
+      color: white;
+    }
+
+    #deleteModal .modal-buttons button.cancel:hover {
+      background-color: #666;
+    }
+
+    #deleteModal .modal-buttons button:not(.cancel) {
+      background-color: #c62828;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>📸 Pi Photo Frame</h1>
+  <div class="upload-box">
+    <h2>📤 Upload</h2>
+    <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+      <input id="file-upload" type="file" name="photos" accept="image/*" multiple />
+      <div class="upload-row">
+        <button type="button" onclick="uploadToMain()">To Main</button>
+        <button type="button" onclick="uploadToNew()">New Slideshow</button>
+        <button type="button" onclick="uploadToExisting()">Existing Slideshow</button>
+      </div>
+      <div id="existingModal">
+        <label for="existingSelect"><strong>Select Existing Slideshow:</strong></label>
+        <select id="existingSelect"></select>
+        <div class="modal-buttons">
+          <button type="button" onclick="confirmExisting()">Confirm</button>
+          <button type="button" class="cancel" onclick="cancelExisting()">Cancel</button>
+        </div>
+      </div>
+      <div id="newModal">
+        <label for="newSlideshowName">Name your new slideshow:</label>
+        <input type="text" id="newSlideshowName" placeholder="e.g. Summer Vibes" />
+        <div class="modal-buttons">
+          <button type="button" onclick="confirmNew()">Create</button>
+          <button type="button" class="cancel" onclick="cancelNew()">Cancel</button>
+        </div>
+        <div id="preview"></div>
+    </form>
+  </div>
+
+  <div class="controls">
+    <div class="grid">
+      <button onclick="goPrevious()">⏮ Prev</button>
+      <button onclick="goNext()">⏭ Next</button>
+      <form id="zoomInForm" action="/zoom_in" method="post">
+        <button type="submit">🔍 Zoom In</button>
+      </form>
+      <form id="zoomOutForm" action="/zoom_out" method="post">
+        <button type="submit">🔎 Zoom Out</button>
+      </form>
+
+    </div>
+  </div>
+
+  <div id="deleteModal">
+    <div style="text-align: center; line-height: 1.2;">
+      <p style="margin: 0; font-weight: bold;">Delete Photo</p>
+      <p style="margin: 0;">Are you sure?</p>
+    </div>
+    <div class="modal-buttons">
+      <button onclick="confirmDelete()">🗑️ Delete</button>
+      <button class="cancel" onclick="cancelDelete()">Cancel</button>
+    </div>
+  </div>
+
+
+
+
+ <div class="current-photo-box" onclick="browseImages()">
+  <div class="photo-label-and-thumb">
+  <div class="current-photo-label">Select Photo or Slideshow To View</div>
+
+  <!-- Muted text floats independently -->
+  <span id="muted-text" style="display: none;">DISPLAY<br>🌗<br>MUTED</span>
+
+  <!-- Thumbnail box -->
+  <div id="thumbnailWrapper" class="thumbnail-wrapper">
+    <div class="thumbnail-inner">
+      <img class="current-photo-thumbnail lazy"
+     data-src="/thumbs/{{ current_folder }}/{{ filename }}" />
+      <div class="trash-icon" onclick="handleDeleteTap(event)">🗑️</div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+
+  </div>
+
+
+  <div class="frame-actions">
+    <button id="displayToggleBtn" onclick="toggleDisplay()">🖥️ Mute Display</button>
+    <button id="restartFrameBtn" onclick="restartFrame()">🔄 Restart Frame</button>
+  </div>
+
+  <div class="slider-container">
+  <label for="slideshowDuration">
+    <a href="/clocks" style="text-decoration: none;">⏱️</a> Slide Interval:
+  </label>
+  <input type="range" id="slideshowDuration" name="delay" style="width: 130px;" min="0" max="30" step="1" value="{{ delay }}" oninput="updateDurationLabel(this.value)">
+  <span id="durationLabel">{{ delay }} min</span>
+</div>
+
+
+  <script>
+    const fileInput = document.getElementById('file-upload');
+    const preview = document.getElementById('preview');
+    const existingModal = document.getElementById('existingModal');
+    const newModal = document.getElementById('newModal');
+    const existingSelect = document.getElementById('existingSelect');
+    const newSlideshowName = document.getElementById('newSlideshowName');
+    let uploadDestination = 'main';
+
+    function uploadToMain() {
+      uploadDestination = 'main';
+      fileInput.click();
+    }
+
+    function uploadToNew() {
+      newSlideshowName.value = '';
+      newModal.classList.add('show');
+      newSlideshowName.focus();
+    }
+
+function showUploadingModal() {
+  const modal = document.getElementById('uploading-modal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function hideUploadingModal() {
+  const modal = document.getElementById('uploading-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+
+function confirmNew() {
+  const name = newSlideshowName.value.trim();
+  if (name) {
+    fetch('/create-slideshow', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ folderName: name })
+    }).then(() => {
+      uploadDestination = name;
+      newModal.classList.remove('show');
+
+      // ✅ Delay file picker to ensure it triggers
+      setTimeout(() => {
+        fileInput.click();
+      }, 100);
+    });
+  }
+}
+
+    function cancelNew() {
+      newModal.classList.remove('show');
+    }
+
+   function uploadToExisting() {
+  fetch('/list-slideshows')
+    .then(res => res.json())
+    .then(folders => {
+      existingSelect.innerHTML = '';
+      folders.forEach(name => {
+        const friendlyName = name
+          .replace(/_/g, ' ')
+          .replace(/\w\S*/g, word =>
+            word.charAt(0).toUpperCase() + word.substring(1).toLowerCase()
+          );
+
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = friendlyName;
+        existingSelect.appendChild(option);
+      });
+      existingModal.classList.add('show');
+    });
+   }
+
+
+    function confirmExisting() {
+      const selected = existingSelect.value;
+      if (selected) {
+        uploadDestination = selected;
+        existingModal.classList.remove('show');
+        fileInput.click();
+      }
+    }
+
+    function cancelExisting() {
+      existingModal.classList.remove('show');
+    }
+
+    fileInput.addEventListener('change', () => {
+      preview.innerHTML = '';
+      const files = Array.from(fileInput.files);
+      files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = e => {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            preview.appendChild(img);
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+      const form = document.getElementById('upload-form');
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'folder';
+      input.value = uploadDestination;
+      form.appendChild(input);
+      showUploadingModal();
+      showUploadingModal();
+      form.requestSubmit();
+
+    });
+
+    function browseImages() {
+      window.location.href = '/browse';
+    }
+
+    function goNext() {
+      fetch('/next_image')
+        .then(res => res.json())
+        .then(data => {
+          if (data.image) {
+            const img = document.querySelector('.current-photo-thumbnail');
+            img.src = data.image + '?t=' + Date.now();
+            zoomLevel = 1;
+            updateZoom();
+          }
+        });
+    }
+
+    function goPrevious() {
+      fetch('/previous_image')
+        .then(res => res.json())
+        .then(data => {
+          if (data.image) {
+            const img = document.querySelector('.current-photo-thumbnail');
+            img.src = data.image + '?t=' + Date.now();
+            zoomLevel = 1;
+            updateZoom();
+          }
+        });
+    }
+
+    function restartFrame() {
+      fetch('/restart', {
+        method: 'POST'
+      });
+      document.querySelector('.trash-icon')?.classList.add('hidden');
+
+      // Restore after a delay (if user stays on page)
+      setTimeout(() => {
+        document.querySelector('.trash-icon')?.classList.remove('hidden');
+      }, 33000); // Adjust timing as needed
+    }
+
+    function toggleDisplay() {
+  const btn = document.getElementById('displayToggleBtn');
+  const thumbnail = document.querySelector('.current-photo-thumbnail');
+  const mutedText = document.getElementById('muted-text');
+  const trashIcon = document.querySelector('.trash-icon');
+  const label = document.querySelector('.current-photo-label');
+  const photoBox = document.querySelector('.current-photo-box');
+  const thumbnailWrapper = document.getElementById('thumbnailWrapper');
+
+  const isCurrentlyMuted = btn.textContent.includes('Unmute Display');
+  const wantsToMute = !isCurrentlyMuted;
+
+  fetch('/display-toggle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ displayMuted: wantsToMute })
+  });
+
+  // Toggle visibility
+  thumbnail.style.display = wantsToMute ? 'none' : 'block';
+  mutedText.style.display = wantsToMute ? 'block' : 'none';
+  trashIcon.style.display = wantsToMute ? 'none' : 'block';
+  label.style.display = wantsToMute ? 'none' : 'block';
+  photoBox.style.pointerEvents = wantsToMute ? 'none' : 'auto';
+  thumbnailWrapper.style.display = wantsToMute ? 'none' : 'flex';
+
+  // Flip button label
+  btn.textContent = wantsToMute ? '🖥️ Unmute Display' : '🖥️ Mute Display';
+}
+
+
+    let zoomLevel = 1;
+
+    function updateZoom() {
+      const thumb = document.querySelector('.current-photo-thumbnail');
+      if (thumb) {
+        thumb.style.transform = `scale(${zoomLevel})`;
+        thumb.style.transformOrigin = 'center center';
+        thumb.style.transition = 'transform 0.3s ease';
+      }
+    }
+
+    document.getElementById('zoomInForm').addEventListener('submit', e => {
+      e.preventDefault(); // Keep mobile-friendly behavior
+      zoomLevel *= 1.3;
+      updateZoom();
+
+      // 🔁 Send zoom command to Pi
+      fetch('/zoom_in', { method: 'POST' });
+    });
+
+    document.getElementById('zoomOutForm').addEventListener('submit', e => {
+      e.preventDefault();
+      zoomLevel /= 1.3;
+      updateZoom();
+
+      fetch('/zoom_out', { method: 'POST' });
+    });
+
+
+
+    document.querySelectorAll('form[action="/prev"], form[action="/next"]').forEach(form => {
+      form.addEventListener('submit', () => {
+        zoomLevel = 1;
+        updateZoom();
+      });
+    });
+
+    let lastMtime = null;
+
+    setInterval(() => {
+      fetch('/symlink-mtime')
+        .then(res => res.json())
+        .then(data => {
+          if (data.mtime && data.mtime !== lastMtime) {
+            lastMtime = data.mtime;
+
+            // Reset zoom only when image actually changes
+            zoomLevel = 1;
+            updateZoom();
+
+            const img = document.querySelector('.current-photo-thumbnail');
+            if (img) {
+              img.src = '/static/current.jpg?v=' + Date.now();
+            }
+          }
+        })
+        .catch(err => {
+          console.warn("Failed to fetch symlink mtime:", err);
+        });
+    }, 1000);
+
+    function handleDeleteTap(e) {
+      e.stopPropagation(); // Prevents triggering browseImages()
+      showDeleteConfirmation(); // Placeholder for modal logic
+    }
+
+    function showDeleteConfirmation() {
+      document.getElementById('deleteModal').classList.add('show');
+    }
+
+    function cancelDelete() {
+      document.getElementById('deleteModal').classList.remove('show');
+    }
+
+    function confirmDelete() {
+      document.getElementById('deleteModal').classList.remove('show');
+      deleteCurrentImage(); // This will call your backend
+    }
+
+    function getCurrentFilename() {
+      return fetch('/static/current_filename.txt')
+        .then(res => res.text())
+        .then(name => name.trim());
+    }
+
+function deleteCurrentImage() {
+  getCurrentFilename().then(filename => {
+    fetch(`/delete?file=${encodeURIComponent(filename)}`, {
+      method: 'DELETE'
+    })
+    .then(response => {
+      if (response.ok) {
+        // Call next_image endpoint to get the new image
+        fetch('/next_image')
+          .then(res => res.json())
+          .then(data => {
+            if (data.image) {
+              const img = document.querySelector('.current-photo-thumbnail');
+              img.src = data.image + '?t=' + Date.now();
+              zoomLevel = 1;
+              updateZoom();
+            }
+          });
+      } else {
+        console.error('Error deleting image:', response.statusText);
+      }
+    })
+    .catch(error => {
+      console.error('Error deleting image:', error);
+    });
+  });
+}
+
+let delayUpdateTimer;
+
+function updateDurationLabel(value) {
+  const label = document.getElementById('durationLabel');
+  label.textContent = value === "0" ? "No delay" : `${value} min`;
+
+  clearTimeout(delayUpdateTimer);
+  delayUpdateTimer = setTimeout(() => {
+    fetch('/set_delay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `delay=${value}`
+    });
+  }, 2000); // wait 2 seconds after last input
+}
+
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const slider = document.getElementById('slideshowDuration');
+      const label = document.getElementById('durationLabel');
+      if (slider && label) {
+        label.textContent = `${slider.value} min`;
+      }
+
+      // Keep live updates working as you slide
+      slider.addEventListener('input', () => {
+        label.textContent = `${slider.value} min`;
+      });
+    });
+  </script>
+
+<div id="uploading-modal" class="hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-content">
+    Uploading<span class="dots"><span>.</span><span>.</span><span>.</span></span>
+  </div>
+</div>
+
+</body>
+
+</html>
