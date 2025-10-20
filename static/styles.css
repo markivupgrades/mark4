@@ -1,0 +1,12 @@
+.thumbnail-scroll img.selected {
+  outline: 20px solid #91F527;
+  outline-offset: -12px;
+  box-shadow: 0 0 0 8px rgba(145, 245, 39, 0.3);
+  animation: pulseBorder 2s infinite ease-in-out;
+}
+
+@keyframes pulseBorder {
+  0%   { outline-color: #91F527; }
+  50%  { outline-color: #caff6c; }
+  100% { outline-color: #91F527; }
+}
