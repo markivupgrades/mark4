@@ -165,6 +165,7 @@ def choose_clock():
 
 @app.route('/launch/<script_name>')
 def launch(script_name):
+   
     global clock_process, active_clock_name
 
     if not script_name.endswith(".py"):
@@ -179,14 +180,16 @@ def launch(script_name):
         return f"Script not found: {script_name}", 404
 
     try:
-        subprocess.run(["pkill", "-f", "/home/pi/Rolex/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Kill all allowed clock scripts and billboard
+        for name in allowed_scripts:
+            subprocess.call(["pkill", "-f", name])
+        subprocess.call(["pkill", "-f", "billboard.py"])
 
         env = os.environ.copy()
         env["DISPLAY"] = ":0"
         env["XDG_RUNTIME_DIR"] = "/run/user/1000"
 
         message = request.args.get('message', default='')
-
         args = ['python3', script_path]
         if message:
             args.append(message)
@@ -197,6 +200,7 @@ def launch(script_name):
     except Exception as e:
         return f"Error launching {script_name}: {e}", 500
 
+
 @app.route('/billboard')
 def billboard():
     duration = request.args.get('duration', '30')
@@ -206,8 +210,6 @@ def billboard():
 def launch_billboard():
     global clock_process, active_clock_name
 
-    subprocess.run(["pkill", "-f", "/home/pi/Rolex/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
     message = request.args.get('message', '')
     font = request.args.get('font', 'Copperplate')
     size = request.args.get('size', '36')
@@ -216,7 +218,7 @@ def launch_billboard():
     duration = request.args.get('duration', '30')
 
     script_path = "/home/pi/Rolex/Message2.py"
-    args = ['python3', script_path, message, font, size, color, background, duration]
+    args = ['python3', script_path, message, font, size, color, background, duration]  # ✅ Passed to script
 
     env = os.environ.copy()
     env["DISPLAY"] = ":0"
@@ -229,7 +231,7 @@ def launch_billboard():
 
 @app.route('/message')
 def message():
-    duration = request.args.get('duration', '30')
+    duration = request.args.get('duration', '30')  # default to 30 if missing
     return render_template('message.html', duration=duration)
 
 @app.route("/cancel")
@@ -397,32 +399,19 @@ def create_slideshow():
 @app.route('/display-toggle', methods=['POST'])
 def toggle_display():
     import subprocess
-    import os
     from flask import request
-
-    env = os.environ.copy()
-    env["DISPLAY"] = ":0"
-    env["XDG_RUNTIME_DIR"] = "/run/user/1000"
 
     data = request.get_json()
     display_muted = data.get("displayMuted")
 
-    cmd = ["/usr/bin/wlr-randr", "--output", "HDMI-A-1", "--off"] if display_muted else \
-          ["/usr/bin/wlr-randr", "--output", "HDMI-A-1", "--on"]
+    cmd = ["vcgencmd", "display_power", "0"] if display_muted else \
+          ["vcgencmd", "display_power", "1"]
 
     try:
-        result = subprocess.run(
-            cmd,
-            env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-        print("Command succeeded:", result.stdout.decode())
-        return "Display toggled", 200
-    except subprocess.CalledProcessError as e:
-        print("Command failed:", e.stderr.decode())
-        return f"Error toggling display: {e.stderr.decode()}", 500
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        return "", 204  # No content
+    except subprocess.CalledProcessError:
+        return "", 500  # Silent failure
 
 @app.route('/delete', methods=['DELETE', 'POST'])
 def delete_image():
