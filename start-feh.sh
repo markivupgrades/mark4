@@ -2,13 +2,9 @@
 export DISPLAY=:0
 export LIBGL_ALWAYS_SOFTWARE=1
 
-LOGFILE="/home/pi/frame-app/feh-launch.log"
-echo "$(date) - Starting feh viewer" >> "$LOGFILE"
-
 # Wait for X to be ready
 for i in {1..20}; do
     if xset q &>/dev/null; then
-        echo "$(date) - X is ready" >> "$LOGFILE"
         break
     fi
     sleep 1
@@ -19,7 +15,6 @@ for i in {1..20}; do
     if [ -L /home/pi/frame-app/static/current.jpg ]; then
         TARGET=$(readlink -f /home/pi/frame-app/static/current.jpg)
         if [[ "$TARGET" != "/usr/share/plymouth/themes/pix/splash.png" && -f "$TARGET" ]]; then
-            echo "$(date) - Symlink points to $TARGET" >> "$LOGFILE"
             break
         fi
     fi
@@ -28,4 +23,3 @@ done
 
 # Launch feh
 /usr/bin/feh --fullscreen --hide-pointer --borderless --auto-zoom --reload 2 --geometry 3840x2160 /home/pi/frame-app/static/current.jpg &
-
