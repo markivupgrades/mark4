@@ -3,22 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <title>Choose Your Message</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    html {
+      font-size: 20px;
+    }
+
     body {
       font-family: sans-serif;
       background: radial-gradient(circle at center, #fff0f5 0%, #d0f0ff 100%);
-      padding: 2em;
+      padding: 1.5em;
       text-align: center;
+      margin: 0;
     }
+
+    h2 {
+      font-size: 2em;
+      margin-bottom: 1em;
+      color: #333;
+    }
+
     select, input, button {
-      font-size: 1.4em;
+      font-size: 1.2em;
       margin-top: 1em;
-      padding: 0.5em;
-      border-radius: 8px;
+      padding: 0.8em 1em;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 500px;
+      box-sizing: border-box;
     }
+
     input[type="text"] {
-      width: 80%;
       text-align: center;
+    }
+
+    #customMessageContainer label {
+      font-size: 1.2em;
+      display: block;
+      margin-top: 1em;
+      color: #444;
+    }
+
+    button {
+      background-color: #e0f7ff;
+      border: 1px solid #aaa;
+      color: #333;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #d0ecf5;
+    }
+
+    @media (max-width: 600px) {
+      html {
+        font-size: 18px;
+      }
+
+      select, input, button {
+        font-size: 1.1em;
+        padding: 0.6em;
+      }
+
+      h2 {
+        font-size: 1.8em;
+      }
     }
   </style>
 </head>
