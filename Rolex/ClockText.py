@@ -14,7 +14,6 @@ class Clock:
         self.canvas = tk.Canvas(self.root, width=1920, height=1080)
         self.canvas.pack(fill='both', expand=True)
 
-        # 🔧 Absolute path for background
         image_path = os.path.join("/home/pi/Rolex/png", "Plain.png")
         self.background_image = tk.PhotoImage(file=image_path)
 
@@ -23,6 +22,10 @@ class Clock:
     def draw_static_layers(self):
         self.canvas.create_image(0, 0, image=self.background_image, anchor='nw')
         self.display_message()
+        x0 = 992
+        y0 = 635
+        self.canvas.create_oval(x0-44, y0-44, x0+44, y0+44, fill='white', tags='center_dot')
+        self.canvas.create_oval(x0-38, y0-38, x0+38, y0+38, fill='black', tags='center_dot')
 
     def update_main_hands(self):
         now = time.localtime()
@@ -34,7 +37,7 @@ class Clock:
         now = time.localtime()
         self.canvas.delete('second_hand')
         self.draw_second_hand(now.tm_sec)
-        self.root.after(50, self.update_second_hand)
+        self.root.after(1000, self.update_second_hand)
 
     def draw_hands(self, hour, minute, second):
         x0 = 992
@@ -53,11 +56,8 @@ class Clock:
         minute_tail_y = y0 + 130 * math.cos(minute_angle)
 
         self.canvas.create_line(hour_tail_x, hour_tail_y, hour_x, hour_y, width=39, fill='black', tags='main_hands')
-        self.canvas.create_oval(x0-44, y0-44, x0+44, y0+44, fill='white', tags='main_hands')
-
         self.canvas.create_line(minute_tail_x, minute_tail_y, minute_x, minute_y, width=25, fill='black', tags='main_hands')
         self.canvas.create_oval(minute_x-5, minute_y-5, minute_x+5, minute_y+5, fill='black', tags='main_hands')
-        self.canvas.create_oval(x0-38, y0-38, x0+38, y0+38, fill='black', tags='main_hands')
 
     def draw_second_hand(self, second):
         x0 = 992

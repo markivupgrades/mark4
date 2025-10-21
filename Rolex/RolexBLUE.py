@@ -6,7 +6,7 @@ import math
 import os
 from datetime import datetime
 
-CENTER_X, CENTER_Y = 989, 632
+CENTER_X, CENTER_Y = 982, 632
 
 class Clock:
     def __init__(self):
@@ -39,8 +39,8 @@ class Clock:
         # Weekday image logic removed
         # self.load_weekday_image()
         # self.canvas.create_image(985, 130, image=self.weekday_image, anchor='center')
-        self.canvas.create_text(1394, 637, text=day, font=('Copperplate', 64), fill='black')
-        self.canvas.create_text(1392, 635, text=day, font=('Copperplate', 64), fill='white', anchor='center')
+        self.canvas.create_text(1397, 637, text=day, font=('Copperplate', 64), fill='black')
+        self.canvas.create_text(1395, 635, text=day, font=('Copperplate', 64), fill='white', anchor='center')
 
     def draw_hands(self, hour, minute):
         x0 = CENTER_X

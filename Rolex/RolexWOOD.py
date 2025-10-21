@@ -30,21 +30,10 @@ class Clock:
 
     def draw_static_layers(self):
         self.canvas.create_image(0, 0, image=self.background_image, anchor='nw')
-        self.draw_clock_face()
         now = datetime.now()
         self.draw_date(now.day, now.strftime("%a"))
         self.draw_center_ovals()
 
-    def draw_clock_face(self):
-        x0 = 986
-        y0 = 632
-        radius = 498
-        for i in range(1, 13):
-            if i not in [12, 3, 6, 9]:
-                angle = i * math.pi / 6
-                x = x0 + radius * 0.8 * math.sin(angle)
-                y = y0 - radius * 0.8 * math.cos(angle)
-                self.canvas.create_text(x, y, text=str(i), font=('Helvetica', 24, 'bold'))
 
     def draw_center_ovals(self):
         x0 = 980

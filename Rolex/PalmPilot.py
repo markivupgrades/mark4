@@ -3,7 +3,7 @@
 import tkinter as tk
 import time
 import math
-import os  # ✅ Added for absolute path handling
+import os
 from datetime import datetime
 
 CENTER_X, CENTER_Y = 989, 632
@@ -18,21 +18,12 @@ class Clock:
         # 🔧 Use absolute paths for all images
         base_path = "/home/pi/Rolex/png"
         self.background_image = tk.PhotoImage(file=os.path.join(base_path, "RolexPALM.png"))
-        self.weekday_images = {
-            "Mon": tk.PhotoImage(file=os.path.join(base_path, "Monday.png")),
-            "Tue": tk.PhotoImage(file=os.path.join(base_path, "Tuesday.png")),
-            "Wed": tk.PhotoImage(file=os.path.join(base_path, "Wednesday.png")),
-            "Thu": tk.PhotoImage(file=os.path.join(base_path, "Thursday.png")),
-            "Fri": tk.PhotoImage(file=os.path.join(base_path, "Friday.png")),
-            "Sat": tk.PhotoImage(file=os.path.join(base_path, "Saturday.png")),
-            "Sun": tk.PhotoImage(file=os.path.join(base_path, "Sunday.png"))
-        }
 
     def draw_static_layers(self):
         self.canvas.create_image(0, 0, image=self.background_image, anchor='nw')
-        self.draw_clock_face()
+        # self.draw_clock_face()  # ❌ Commented out to remove dial numbers
         now = datetime.now()
-        self.draw_date(now.day, now.strftime("%a"))
+        self.draw_date(now.day)
         self.draw_center_ovals()
 
     def draw_clock_face(self):
@@ -53,8 +44,7 @@ class Clock:
         self.canvas.create_oval(x0-38, y0-38, x0+38, y0+38, fill='black')
         self.canvas.create_oval(x0-34, y0-34, x0+34, y0+34, fill='white')
 
-    def draw_date(self, day, weekday):
-        self.canvas.create_image(993, 140, image=self.weekday_images[weekday], anchor='center')
+    def draw_date(self, day):
         self.canvas.create_text(1411, 645, text=day, font=('Copperplate', 64), fill='#FCF2E3')
         self.canvas.create_text(1409, 643, text=day, font=('Copperplate', 64), fill='black', anchor='center')
 
