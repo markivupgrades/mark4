@@ -120,7 +120,6 @@ def regenerate_image_order():
     order_path = os.path.join(BASE_DIR, 'image_order.txt')
     try:
         with open(order_path, 'w') as f:
-            f.write(f"# Shuffled at {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write('\n'.join(images))
     except Exception as e:
         app.logger.error(f"Failed to write image_order.txt: {e}")
