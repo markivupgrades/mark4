@@ -188,12 +188,12 @@
 <div style="margin-top: 5em; text-align: center; color: white;">
   <span style="font-size: 2.1em;">Clock exits after:</span><br><br>
   <div style="display: flex; justify-content: center; gap: 1.2em; flex-wrap: wrap; font-size: 1.4em;">
-    <label><input type="radio" name="duration" value="5" onclick="setDuration(5)"> 5 min</label>
-    <label><input type="radio" name="duration" value="10" onclick="setDuration(10)"> 10 min</label>
-    <label><input type="radio" name="duration" value="15" onclick="setDuration(15)"> 15 min</label>
-    <label><input type="radio" name="duration" value="30" onclick="setDuration(30)" checked> 30 min</label>
+    <label><input type="radio" name="duration" value="5" {% if duration == '5' %}checked{% endif %} onclick="setDuration(5)"> 5 min</label>
+    <label><input type="radio" name="duration" value="10" {% if duration == '10' %}checked{% endif %} onclick="setDuration(10)"> 10 min</label>
+    <label><input type="radio" name="duration" value="15" {% if duration == '15' %}checked{% endif %} onclick="setDuration(15)"> 15 min</label>
+    <label><input type="radio" name="duration" value="30" {% if duration == '30' %}checked{% endif %} onclick="setDuration(30)"> 30 min</label>
   </div>
-  <input type="hidden" id="clockDuration" value="30">
+  <input type="hidden" id="clockDuration" value="{{ duration }}">
 </div>
 
 
