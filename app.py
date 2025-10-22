@@ -411,17 +411,16 @@ def create_slideshow():
         if not folder:
             return 'Missing folder name', 400
 
-        upload_path = os.path.join(UPLOAD_ROOT, 'main', folder)
-        thumb_path = os.path.join(THUMB_ROOT, 'main', folder)
+        real_path = os.path.join('/home/pi/Slideshows', folder)
+        os.makedirs(real_path, exist_ok=True)
 
-        os.makedirs(upload_path, exist_ok=True)
+        thumb_path = os.path.join(THUMB_ROOT, 'main', folder)
         os.makedirs(thumb_path, exist_ok=True)
 
         return '', 204
     except Exception as e:
         app.logger.error(f"Failed to create slideshow folder: {e}")
         return 'Error creating folder', 400
-
 
 @app.route('/display-toggle', methods=['POST'])
 def toggle_display():
