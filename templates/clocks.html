@@ -184,44 +184,16 @@
 </div>
 
 
-   <!-- CLOCK DURATION CONTROL (Mobile Optimized & Spaced Lower) -->
-<div style="margin-top: 5em; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 0.4em; flex-wrap: wrap;">
-  <span style="font-size: 2.1em;">Clock exits after</span>
-  <select id="clockDuration" name="clockDuration" style="font-size: 1.6em; padding: 0.2em; border-radius: 4px; text-align-last: center; width: 3.8em;">
-
-    <!-- Values 1 to 30 -->
-    <option value="1">1</option>
-    <option value="2">2</option>
-    <option value="3">3</option>
-    <option value="4">4</option>
-    <option value="5">5</option>
-    <option value="6">6</option>
-    <option value="7">7</option>
-    <option value="8">8</option>
-    <option value="9">9</option>
-    <option value="10">10</option>
-    <option value="11">11</option>
-    <option value="12">12</option>
-    <option value="13">13</option>
-    <option value="14">14</option>
-    <option value="15">15</option>
-    <option value="16">16</option>
-    <option value="17">17</option>
-    <option value="18">18</option>
-    <option value="19">19</option>
-    <option value="20">20</option>
-    <option value="21">21</option>
-    <option value="22">22</option>
-    <option value="23">23</option>
-    <option value="24">24</option>
-    <option value="25">25</option>
-    <option value="26">26</option>
-    <option value="27">27</option>
-    <option value="28">28</option>
-    <option value="29">29</option>
-    <option value="30" selected>30</option>
-  </select>
-  <span style="font-size: 2.1em;">min.</span>
+<!-- CLOCK DURATION RADIO BUTTONS -->
+<div style="margin-top: 5em; text-align: center; color: white;">
+  <span style="font-size: 2.1em;">Clock exits after:</span><br><br>
+  <div style="display: flex; justify-content: center; gap: 1.2em; flex-wrap: wrap; font-size: 1.4em;">
+    <label><input type="radio" name="duration" value="5" onclick="setDuration(5)"> 5 min</label>
+    <label><input type="radio" name="duration" value="10" onclick="setDuration(10)"> 10 min</label>
+    <label><input type="radio" name="duration" value="15" onclick="setDuration(15)"> 15 min</label>
+    <label><input type="radio" name="duration" value="30" onclick="setDuration(30)" checked> 30 min</label>
+  </div>
+  <input type="hidden" id="clockDuration" value="30">
 </div>
 
 
@@ -270,6 +242,9 @@
      window.location.href = `/billboard?duration=${duration}`;
    }
 
+   function setDuration(val) {
+     document.getElementById('clockDuration').value = val;
+   }
 
   function showPoof(e) {
   e.preventDefault();
