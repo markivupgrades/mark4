@@ -170,7 +170,8 @@ def generate_thumbnail(folder, filename, size=(300, 300), quality=30):
 
 @app.route("/clocks")
 def choose_clock():
-    return render_template("clocks.html")
+    duration = request.args.get('duration', default='15')
+    return render_template("clocks.html", duration=duration)
 
 @app.route('/launch/<script_name>')
 def launch(script_name):
@@ -198,11 +199,11 @@ def launch(script_name):
         env["XDG_RUNTIME_DIR"] = "/run/user/1000"
 
         message = request.args.get('message', default='')
-        duration = request.args.get('duration', default='30')
+        duration = request.args.get('duration', default='15')
         try:
             duration_minutes = int(duration)
         except ValueError:
-            duration_minutes = 30
+            duration_minutes = 15
 
         args = ['python3', script_path]
         if message:
@@ -221,7 +222,8 @@ def launch(script_name):
 
         threading.Timer(duration_minutes * 60, stop_clock).start()
 
-        return redirect(url_for('choose_clock'))
+        # ✅ Pass duration back to /clocks so UI reflects it
+        return redirect(url_for('choose_clock', duration=duration))
     except Exception as e:
         return f"Error launching {script_name}: {e}", 500
 
