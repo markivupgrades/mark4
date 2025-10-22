@@ -36,6 +36,16 @@ THUMB_ROOT = os.path.join(BASE_DIR, 'static', 'thumbs')
 SYMLINK_PATH = os.path.join(BASE_DIR, 'static', 'current.jpg')
 CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
 
+def create_slideshow_list(folder, images):
+    list_path = os.path.join(BASE_DIR, 'slideshow_list.txt')
+    try:
+        with open(list_path, 'w') as f:
+            f.write('\n'.join(images))
+            f.flush()
+            os.fsync(f.fileno())
+    except Exception as e:
+        app.logger.error(f"Failed to create slideshow_list.txt: {e}")
+
 def launch_zoom_viewer():
     subprocess.Popen([
         "feh", "--fullscreen", "--title", "feh-zoom", "/home/pi/frame-app/static/current.jpg"
@@ -601,6 +611,9 @@ def select_folder():
             ]
             images.sort()
 
+        # ✅ Write slideshow_list.txt for non-main folders
+        create_slideshow_list(folder, images)
+
     if images:
         first_image_path = os.path.join(folder_path, images[0])
         update_viewer_state(first_image_path, reset_delay=True)
@@ -692,12 +705,15 @@ def previous_image():
     if not folder:
         return jsonify({'image': None})
 
-    order_path = os.path.join(BASE_DIR, 'image_order.txt')
+    # ✅ Use correct playlist based on folder
+    playlist_name = 'image_order.txt' if folder == 'main' else 'slideshow_list.txt'
+    order_path = os.path.join(BASE_DIR, playlist_name)
+
     try:
         with open(order_path, 'r') as f:
-            images = f.read().strip().split()
+            images = [line.strip() for line in f if line.strip()]
     except Exception as e:
-        app.logger.error(f"Error reading image_order.txt: {e}")
+        app.logger.error(f"Error reading {playlist_name}: {e}")
         return jsonify({'image': None})
 
     if not images:
@@ -715,11 +731,9 @@ def previous_image():
     image_path = os.path.join(UPLOAD_ROOT, folder, images[prev_idx])
     update_viewer_state(image_path, reset_delay=False)
 
-    # 🕒 Touch delay_updated.flag to reset slideshow timer
-    flag_path = os.path.join(BASE_DIR, 'delay_updated.flag')
+    # ✅ Touch delay_updated.flag to reset slideshow timer
     try:
-        from pathlib import Path
-        Path(flag_path).touch()
+        Path(os.path.join(BASE_DIR, 'delay_updated.flag')).touch()
     except Exception as e:
         app.logger.error(f"Failed to touch delay_updated.flag: {e}")
 
@@ -846,12 +860,14 @@ def next_image():
     if not folder:
         return jsonify({'image': None})
 
-    order_path = os.path.join(BASE_DIR, 'image_order.txt')
+    playlist_name = 'image_order.txt' if folder == 'main' else 'slideshow_list.txt'
+    order_path = os.path.join(BASE_DIR, playlist_name)
+
     try:
         with open(order_path, 'r') as f:
-            images = f.read().strip().split()
+            images = [line.strip() for line in f if line.strip()]
     except Exception as e:
-        app.logger.error(f"Error reading image_order.txt: {e}")
+        app.logger.error(f"Error reading {playlist_name}: {e}")
         return jsonify({'image': None})
 
     if not images:
@@ -866,23 +882,17 @@ def next_image():
         app.logger.warning(f"Could not find current image in list: {e}")
         next_idx = 0
 
-
-
     image_path = os.path.join(UPLOAD_ROOT, folder, images[next_idx])
     update_viewer_state(image_path, reset_delay=False)
 
-    # Update current_filename.txt
     try:
         with open(os.path.join(BASE_DIR, 'static', 'current_filename.txt'), 'w') as f:
             f.write(os.path.basename(image_path))
     except Exception as e:
         app.logger.error(f"Failed to update current_filename.txt: {e}")
 
-    # 🕒 Touch delay_updated.flag to reset slideshow timer
-    flag_path = os.path.join(BASE_DIR, 'delay_updated.flag')
     try:
-        from pathlib import Path
-        Path(flag_path).touch()
+        Path(os.path.join(BASE_DIR, 'delay_updated.flag')).touch()
     except Exception as e:
         app.logger.error(f"Failed to touch delay_updated.flag: {e}")
 
