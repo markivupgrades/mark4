@@ -174,7 +174,6 @@ def choose_clock():
 
 @app.route('/launch/<script_name>')
 def launch(script_name):
-   
     global clock_process, active_clock_name
 
     if not script_name.endswith(".py"):
@@ -199,12 +198,29 @@ def launch(script_name):
         env["XDG_RUNTIME_DIR"] = "/run/user/1000"
 
         message = request.args.get('message', default='')
+        duration = request.args.get('duration', default='30')
+        try:
+            duration_minutes = int(duration)
+        except ValueError:
+            duration_minutes = 30
+
         args = ['python3', script_path]
         if message:
             args.append(message)
 
         clock_process = subprocess.Popen(args, env=env)
         active_clock_name = script_name.replace(".py", "")
+
+        # ✅ Schedule termination
+        def stop_clock():
+            try:
+                clock_process.terminate()
+                app.logger.info(f"⏱️ Clock '{script_name}' terminated after {duration_minutes} minutes")
+            except Exception as e:
+                app.logger.error(f"Failed to terminate clock '{script_name}': {e}")
+
+        threading.Timer(duration_minutes * 60, stop_clock).start()
+
         return redirect(url_for('choose_clock'))
     except Exception as e:
         return f"Error launching {script_name}: {e}", 500
