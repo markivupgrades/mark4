@@ -379,6 +379,7 @@ function loadThumbnails(sort = 'newest') {
 
       if (page === 1) {
         fullImageList = data.images;
+        container.innerHTML = '';  // clear thumbnails on first page load
       } else {
         fullImageList = fullImageList.concat(data.images);
       }
@@ -468,25 +469,24 @@ function loadThumbnails(sort = 'newest') {
         container.appendChild(img);
       });
 
-      // 🧭 Highlight and scroll to current image
-      if (page === 1) {
-        fetch('/static/current_filename.txt')
-          .then(res => res.text())
-          .then(currentFilename => {
-            const thumbs = Array.from(document.querySelectorAll('.thumbnail-scroll img'));
-            const index = thumbs.findIndex(img => img.getAttribute('data-filename') === currentFilename.trim());
+      fetch(`/static/current_filename.txt?v=${Date.now()}`)
+        .then(res => res.text())
+        .then(currentFilename => {
+          const current = currentFilename.trim();
+          const thumbs = Array.from(document.querySelectorAll('.thumbnail-scroll img'));
+          thumbs.forEach(img => img.classList.remove('selected'));
+          const match = thumbs.find(img => img.getAttribute('data-filename') === current);
 
-            if (index >= 0) {
-              thumbs.forEach(img => img.classList.remove('selected'));
-              thumbs[index].classList.add('selected');
-
-              const scrollTarget = thumbs[Math.max(index - 1, 0)];
-              if (scrollTarget) {
-                scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }
-          });
-      }
+          if (match) {
+            match.classList.add('selected');
+            const scrollContainer = document.querySelector('.thumbnail-scroll');
+            scrollContainer.scrollTo({
+              top: match.offsetTop - 80,
+              behavior: 'smooth'
+            });
+          }
+        })
+        .catch(err => console.error("Error highlighting current image:", err));
 
       page++;
       loading = false;
