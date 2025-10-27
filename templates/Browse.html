@@ -44,11 +44,9 @@
   border: 1px solid #aaa;
   border-radius: 8px;
   background-color: #707070;
-  margin: 40px auto 16px; /* Increased top margin */
+  margin: 40px auto 16px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
-
-
 
     .browse-controls {
       display: flex;
@@ -73,7 +71,7 @@
 
 .slideshow-select-group {
   display: flex;
-  justify-content: flex-end;   /* aligns group to the right */
+  justify-content: flex-end;
   align-items: center;
   gap: 0.5em;
   width: 100%;
@@ -85,12 +83,11 @@
   padding-right: 2.8em;
   border-radius: 14px;
   border: 2px solid #ccc;
-  width: auto;                 /* ✅ prevents full expansion */
-  max-width: 13em;             /* ✅ caps width */
+  width: auto;
+  max-width: 13em;
   background-color: #0078D4;
   color: white;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M35 50 L70 90 L105 50' stroke='%23ffffff' stroke-width='15' fill='none'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 1em center;
   background-size: 1em;
@@ -101,21 +98,26 @@
       overflow-y: auto;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 0.5em;
-      padding: 1em 0;
+      gap: 0.5em;                /* ensure consistent gap between thumbnails */
+      padding: 1em 0;           /* keep vertical padding */
       border-top: 1px solid #eee;
       border-bottom: 1px solid #eee;
+      position: relative;
+      box-sizing: border-box;
     }
 
     .thumbnail-scroll img {
       width: 100%;
+      display: block;
       scroll-margin-top: 80px;
-      aspect-ratio: 1 / 1;
+      aspect-ratio: 1 / 1;      /* keep thumbnails square */
       object-fit: cover;
       border-radius: 6px;
       cursor: pointer;
       box-shadow: 0 0 4px rgba(0,0,0,0.1);
       transition: transform 0.2s ease;
+      background-color: #111;   /* subtle placeholder so empty boxes don't look broken */
+      box-sizing: border-box;
     }
 
     .thumbnail-scroll img:hover {
@@ -200,7 +202,6 @@
   gap: 1em;
 }
 
-
     .delete-button, .cancel-button {
       padding: 0.5em 1.5em;
       font-size: 1.6em;
@@ -242,12 +243,11 @@
           <select id="slideshow-select" onchange="handleFolderChange()">
             <option value="" disabled selected hidden>Choose Slideshow</option>
           </select>
-
         </div>
       </div>
     </div>
 
-    <div class="thumbnail-scroll" id="thumbnail-scroll"></div>
+    <div class="thumbnail-scroll" id="thumbnail-scroll" aria-live="polite" aria-busy="true"></div>
 
     <div class="browse-footer-bar" id="browse-footer">
       <div class="footer-default" id="footer-default">
@@ -256,12 +256,11 @@
         <div class="sort-group" style="display: flex; align-items: center; gap: 0.5em;">
           <label for="sort-select" style="font-size: 1em;">Sort By:</label>
           <select id="sort-select" onchange="handleSort()" style="font-size: 1em; padding: 0.3em 0.8em; border-radius: 6px; border: 1px solid #ccc;">
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
-          <option value="az">A–Z</option>
-          <option value="za">Z–A</option>
-     </select>
-
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="az">A–Z</option>
+            <option value="za">Z–A</option>
+          </select>
         </div>
 
         <button id="enter-delete" class="trash-button">🗑️</button>
@@ -294,234 +293,62 @@
 let currentFolder = '';
 let dragEnabled = true;
 let fullImageList = [];
-
-
-  function goBack() {
-    window.location.href = '/';
-  }
-
-
-  function viewSelected() {
-    const selected = document.getElementById('slideshow-select').value;
-    window.location.href = `/view?slideshow=${selected}`;
-  }
-
+let deleteMode = false;
+let selectedForDelete = new Set();
+let draggedImg = null;
 let currentSort = 'newest';
 
-  let page = 1;
-  let loading = false;
-  let deleteMode = false;
-  let selectedForDelete = new Set();
+// Prioritization parameters - change these in one place if you want different behavior
+const GRID_COLUMNS = 3;            // keep in sync with CSS grid-template-columns
+let rowsPerPage = 3;               // how many rows define the "page" we prioritize
+const neighborRows = 1;            // how many neighbor rows above/below to preload
+const backgroundBatchSize = 100;   // how many images to set src for per background batch
 
-  function handleSort() {
-    const sortKey = document.getElementById('sort-select').value;
-    currentSort = sortKey;
-    page = 1;
-    document.getElementById('thumbnail-scroll').innerHTML = '';
-    loadThumbnails(currentSort);
-   }
+// Basic helpers
+function goBack() { window.location.href = '/'; }
+function qsEncode(obj) { return new URLSearchParams(obj).toString(); }
 
-function handleFolderChange() {
-  const selected = document.getElementById('slideshow-select').value;
-  dragEnabled = (selected !== 'main');
-
-  const sortSelect = document.getElementById('sort-select');
-  sortSelect.innerHTML = '';
-
-  const options = [
-    { value: 'newest', label: 'Newest' },
-    { value: 'oldest', label: 'Oldest' },
-    { value: 'az', label: 'A–Z' },
-    { value: 'za', label: 'Z–A' }
-  ];
-
-  if (selected === 'main') {
-    options.unshift({ value: 'random', label: 'Random' }); // ✅ Add Random only for main
-  } else {
-    options.unshift({ value: 'custom', label: 'Custom' }); // ✅ Add Custom only for others
-  }
-
-  options.forEach(opt => {
-    const option = document.createElement('option');
-    option.value = opt.value;
-    option.textContent = opt.label;
-    sortSelect.appendChild(option);
-  });
-
-  // ✅ Set default sort and apply it
-  sortSelect.value = (selected === 'main') ? 'random' : 'custom';
-  currentSort = sortSelect.value; // ✅ This was missing or misplaced
-
-  fetch('/select_folder', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `folder=${encodeURIComponent(selected)}`
-  }).then(() => {
-    page = 1;
-    selectedForDelete.clear();
-    document.getElementById('thumbnail-scroll').innerHTML = '';
-    loadThumbnails(currentSort);
-  });
+async function refreshCurrentPreview() {
+  try {
+    const r = await fetch('/symlink-mtime');
+    if (!r.ok) return;
+    const j = await r.json();
+    const m = j.mtime || Date.now();
+  } catch (err) { /* silent */ }
 }
 
-
-function loadThumbnails(sort = 'newest') {
-  if (loading) return;
-  loading = true;
-
-  fetch(`/api/thumbnails?page=${page}&sort=${sort}`)
-    .then(res => res.json())
-    .then(data => {
-      currentFolder = data.folder;
-
-      const container = document.getElementById('thumbnail-scroll');
-      document.getElementById('photo-count').textContent = `${data.total} Photos`;
-
-      if (page === 1) {
-        fullImageList = data.images;
-        container.innerHTML = '';  // clear thumbnails on first page load
-      } else {
-        fullImageList = fullImageList.concat(data.images);
-      }
-
-      data.images.forEach(filename => {
-        const img = document.createElement('img');
-        img.src = `/thumbs/${data.folder}/${filename}?v=${Date.now()}`;
-        img.alt = filename;
-        img.setAttribute('data-filename', filename);
-
-        const isMain = data.folder === 'main';
-        img.draggable = !isMain;
-
-        if (!isMain) {
-          img.addEventListener('dragstart', e => {
-            draggedImg = img;
-            e.dataTransfer.effectAllowed = 'move';
-
-            const clone = img.cloneNode(true);
-            clone.style.opacity = '0.4';
-            clone.style.filter = 'brightness(1.4) drop-shadow(0 0 6px rgba(0,0,0,0.2))';
-            clone.style.position = 'absolute';
-            clone.style.top = '-1000px';
-            clone.style.pointerEvents = 'none';
-            clone.style.zIndex = '9999';
-            clone.style.width = img.offsetWidth + 'px';
-            clone.style.height = img.offsetHeight + 'px';
-            document.body.appendChild(clone);
-            e.dataTransfer.setDragImage(clone, clone.width / 2, clone.height / 2);
-
-            img.addEventListener('dragend', () => {
-              document.body.removeChild(clone);
-            }, { once: true });
-          });
-
-          img.addEventListener('dragover', e => e.preventDefault());
-          img.addEventListener('drop', e => {
-            e.preventDefault();
-            if (draggedImg && draggedImg !== img) {
-              const container = img.parentNode;
-              container.insertBefore(draggedImg, img.nextSibling);
-
-              if (window.saveTimer) clearTimeout(window.saveTimer);
-              window.saveTimer = setTimeout(() => {
-                const domOrder = Array.from(document.querySelectorAll('.thumbnail-scroll img'))
-                  .map(img => img.getAttribute('data-filename'));
-                const untouched = fullImageList.filter(f => !domOrder.includes(f));
-                const orderedFilenames = domOrder.concat(untouched);
-
-                fetch('/save-custom-order', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    folder: currentFolder,
-                    order: orderedFilenames
-                  })
-                });
-              }, 2000);
-            }
-            img.classList.remove('drag-hover');
-          });
-
-          img.addEventListener('dragenter', () => img.classList.add('drag-hover'));
-          img.addEventListener('dragleave', () => img.classList.remove('drag-hover'));
-        }
-
-        img.onclick = () => {
-          if (deleteMode) {
-            if (selectedForDelete.has(filename)) {
-              selectedForDelete.delete(filename);
-            } else {
-              selectedForDelete.add(filename);
-            }
-            updateDeleteUI();
-          } else {
-            document.querySelectorAll('.thumbnail-scroll img').forEach(el => el.classList.remove('selected'));
-            img.classList.add('selected');
-
-            fetch('/show', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: `path=${encodeURIComponent(filename)}`
-            });
-          }
-        };
-
-        container.appendChild(img);
-      });
-
-      fetch(`/static/current_filename.txt?v=${Date.now()}`)
-        .then(res => res.text())
-        .then(currentFilename => {
-          const current = currentFilename.trim();
-          const thumbs = Array.from(document.querySelectorAll('.thumbnail-scroll img'));
-          thumbs.forEach(img => img.classList.remove('selected'));
-          const match = thumbs.find(img => img.getAttribute('data-filename') === current);
-
-          if (match) {
-            match.classList.add('selected');
-            const scrollContainer = document.querySelector('.thumbnail-scroll');
-            scrollContainer.scrollTo({
-              top: match.offsetTop - 80,
-              behavior: 'smooth'
-            });
-          }
-        })
-        .catch(err => console.error("Error highlighting current image:", err));
-
-      page++;
-      loading = false;
-    })
-    .catch(err => {
-      console.error("Error loading thumbnails:", err);
-      loading = false;
+async function postShow(filename) {
+  try {
+    const body = qsEncode({ path: filename });
+    const r = await fetch('/show', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body
     });
+    if (!r.ok) throw new Error('show failed');
+    await refreshCurrentPreview();
+  } catch (err) {
+    console.error('postShow error', err);
+  }
 }
 
-let draggedImg = null;
+// Delete flow
+function updateDeleteUI() {
+  document.getElementById('delete-count').textContent = selectedForDelete.size;
+  document.getElementById('confirm-delete').disabled = selectedForDelete.size === 0;
 
-document.querySelectorAll('.thumbnail-scroll img').forEach(img => {
-  img.addEventListener('dragstart', e => {
-    draggedImg = img;
-    e.dataTransfer.effectAllowed = 'move';
-  });
-
-  img.addEventListener('dragover', e => {
-    e.preventDefault(); // Required to allow drop
-  });
-
-  img.addEventListener('drop', e => {
-    e.preventDefault();
-    if (draggedImg && draggedImg !== img) {
-      const container = img.parentNode;
-      container.insertBefore(draggedImg, img.nextSibling);
+  document.querySelectorAll('.thumbnail-scroll img').forEach(img => {
+    img.classList.remove('delete-select');
+    if (selectedForDelete.has(img.alt)) {
+      img.classList.add('delete-select');
+      img.classList.remove('selected');
     }
   });
+}
 
-  img.addEventListener('dragenter', () => img.classList.add('drag-hover'));
-  img.addEventListener('dragleave', () => img.classList.remove('drag-hover'));
-  img.addEventListener('drop', () => img.classList.remove('drag-hover'));
-});
-
+function cancelDelete() {
+  document.getElementById('deleteModal').style.display = 'none';
+}
 
 function confirmDelete() {
   const deletePromises = Array.from(selectedForDelete).map(filename => {
@@ -543,65 +370,305 @@ function confirmDelete() {
   });
 }
 
+// Drag & drop helpers (used only for non-main folders)
+function attachDragHandlers(img) {
+  img.addEventListener('dragstart', e => {
+    draggedImg = img;
+    e.dataTransfer.effectAllowed = 'move';
 
-function cancelDelete() {
-  document.getElementById('deleteModal').style.display = 'none';
-}
+    const clone = img.cloneNode(true);
+    clone.style.opacity = '0.4';
+    clone.style.filter = 'brightness(1.4) drop-shadow(0 0 6px rgba(0,0,0,0.2))';
+    clone.style.position = 'absolute';
+    clone.style.top = '-1000px';
+    clone.style.pointerEvents = 'none';
+    clone.style.zIndex = '9999';
+    clone.style.width = img.offsetWidth + 'px';
+    clone.style.height = img.offsetHeight + 'px';
+    document.body.appendChild(clone);
+    e.dataTransfer.setDragImage(clone, clone.width / 2, clone.height / 2);
 
-
-
-function updateDeleteUI() {
-  document.getElementById('delete-count').textContent = selectedForDelete.size;
-  document.getElementById('confirm-delete').disabled = selectedForDelete.size === 0;
-
-  document.querySelectorAll('.thumbnail-scroll img').forEach(img => {
-    img.classList.remove('delete-select');
-
-    if (selectedForDelete.has(img.alt)) {
-      img.classList.add('delete-select');
-      img.classList.remove('selected'); // ✅ Remove green if red is active
-    }
+    img.addEventListener('dragend', () => {
+      if (clone && clone.parentNode) document.body.removeChild(clone);
+    }, { once: true });
   });
+
+  img.addEventListener('dragover', e => e.preventDefault());
+  img.addEventListener('drop', e => {
+    e.preventDefault();
+    if (draggedImg && draggedImg !== img) {
+      const container = img.parentNode;
+      container.insertBefore(draggedImg, img.nextSibling);
+      scheduleSaveOrder();
+    }
+    img.classList.remove('drag-hover');
+  });
+
+  img.addEventListener('dragenter', () => img.classList.add('drag-hover'));
+  img.addEventListener('dragleave', () => img.classList.remove('drag-hover'));
 }
 
-  document.getElementById('enter-delete').onclick = () => {
-    deleteMode = true;
-    selectedForDelete.clear();
-    document.getElementById('footer-default').style.display = 'none';
-    document.getElementById('footer-delete').style.display = 'flex';
-    updateDeleteUI();
-  };
+let saveOrderTimer = null;
+function scheduleSaveOrder() {
+  if (saveOrderTimer) clearTimeout(saveOrderTimer);
+  saveOrderTimer = setTimeout(() => {
+    const domOrder = Array.from(document.querySelectorAll('.thumbnail-scroll img'))
+      .map(im => im.getAttribute('data-filename'));
+    const untouched = fullImageList.filter(f => !domOrder.includes(f));
+    const orderedFilenames = domOrder.concat(untouched);
 
-  document.getElementById('exit-delete').onclick = () => {
-    deleteMode = false;
-    selectedForDelete.clear();
-    document.getElementById('footer-default').style.display = 'flex';
-    document.getElementById('footer-delete').style.display = 'none';
-    updateDeleteUI();
-  };
+    fetch('/save-custom-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        folder: currentFolder,
+        order: orderedFilenames
+      })
+    });
+  }, 1200);
+}
 
-  document.getElementById('confirm-delete').onclick = () => {
-  if (selectedForDelete.size === 0) return;
+// Utility: fetch current filename (cached)
+let cachedCurrentFilename = null;
+async function getCurrentFilename() {
+  if (cachedCurrentFilename !== null) return cachedCurrentFilename;
+  try {
+    const res = await fetch(`/static/current_filename.txt?v=${Date.now()}`);
+    if (!res.ok) return '';
+    const txt = (await res.text()).trim();
+    cachedCurrentFilename = txt;
+    return txt;
+  } catch (e) {
+    console.warn('Failed to fetch current_filename.txt', e);
+    return '';
+  }
+}
 
-  document.getElementById('deleteModalText').textContent =
-    `Delete ${selectedForDelete.size} items? This cannot be undone.`;
+// Geometry helpers
+function getGridGap(container) {
+  const style = getComputedStyle(container);
+  return parseFloat(style.rowGap || style.gap || 0) || 0;
+}
 
-  document.getElementById('deleteModal').style.display = 'flex';
-};
+function computeThumbnailSize(container) {
+  const gap = getGridGap(container);
+  const containerWidth = container.clientWidth;
+  const totalGapWidth = (GRID_COLUMNS - 1) * gap;
+  const itemWidth = (containerWidth - totalGapWidth) / GRID_COLUMNS;
+  const itemHeight = itemWidth;               // aspect-ratio 1/1 => height equals width
+  const rowHeight = itemHeight + gap;        // include vertical gap when stepping rows
+  return { itemWidth, itemHeight, rowHeight, gap };
+}
 
-function highlightAndScroll(currentFilename) {
-  const thumbs = Array.from(document.querySelectorAll('.thumbnail-scroll img'));
-  const index = thumbs.findIndex(img => img.getAttribute('data-filename') === currentFilename);
+function computeTargetScrollTopFromIndex(index, container, desiredRowForSlot = 1) {
+  const { rowHeight } = computeThumbnailSize(container);
+  const targetRow = Math.floor(index / GRID_COLUMNS);
+  let targetScrollTop = Math.max(0, targetRow * rowHeight - (desiredRowForSlot * rowHeight));
+  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  if (targetScrollTop > maxScrollTop) targetScrollTop = maxScrollTop;
+  if (targetScrollTop < 0) targetScrollTop = 0;
+  return targetScrollTop;
+}
 
-  if (index >= 0) {
-    thumbs.forEach(img => img.classList.remove('selected'));
-    thumbs[index].classList.add('selected');
-
-    const scrollTarget = thumbs[Math.max(index - 1, 0)];
-    if (scrollTarget) {
-      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// Background filling: set src on remaining images in batches to avoid jank
+function backgroundFillRemainingImages(container) {
+  const imgs = Array.from(container.querySelectorAll('img[data-src]')).filter(img => !img.src);
+  let i = 0;
+  function step() {
+    const end = Math.min(i + backgroundBatchSize, imgs.length);
+    for (; i < end; i++) {
+      const img = imgs[i];
+      img.src = img.getAttribute('data-src');
+      img.decoding = 'async';
+      if (!img.loading) img.loading = 'lazy';
+    }
+    if (i < imgs.length) {
+      requestAnimationFrame(step);
+    } else {
+      container.setAttribute('aria-busy', 'false');
     }
   }
+  requestAnimationFrame(step);
+}
+
+// Main loader: create placeholders in DOM order and eagerly load priority window
+async function loadThumbnailsAllBatched(sort = 'newest', batchSize = 200) {
+  const container = document.getElementById('thumbnail-scroll');
+  container.innerHTML = '<div class="spinner">Loading thumbnails…</div>';
+  container.setAttribute('aria-busy', 'true');
+  document.getElementById('photo-count').textContent = '';
+
+  try {
+    const resp = await fetch('/api/thumbnails?sort=' + encodeURIComponent(sort));
+    if (!resp.ok) throw new Error('Failed to fetch thumbnails');
+    const data = await resp.json();
+
+    currentFolder = data.folder || currentFolder;
+    fullImageList = data.images || [];
+    const total = data.total || fullImageList.length;
+    document.getElementById('photo-count').textContent = `${total} Photos`;
+
+    // Prefer server-provided current/current_index when available; fallback to fetching the static file.
+    const serverCurrent = (typeof data.current === 'string' && data.current) ? data.current : '';
+    const serverIndex = (typeof data.current_index === 'number' && data.current_index >= 0) ? data.current_index : -1;
+
+    // If server provided an index, use it; otherwise try serverCurrent; otherwise fall back to fetching the file.
+    let currentFilename = '';
+    let currentIndex = -1;
+    if (serverIndex >= 0) {
+      currentIndex = serverIndex;
+      currentFilename = fullImageList[currentIndex] || '';
+    } else if (serverCurrent) {
+      currentFilename = serverCurrent;
+      currentIndex = fullImageList.indexOf(currentFilename);
+    } else {
+      // fallback: request static/current_filename.txt (retained for compatibility)
+      currentFilename = await getCurrentFilename();
+      currentIndex = currentFilename ? fullImageList.indexOf(currentFilename) : -1;
+    }
+
+    // compute priority window
+    const { itemHeight, rowHeight } = computeThumbnailSize(container);
+    const visibleRows = Math.max(1, Math.floor(container.clientHeight / rowHeight) || rowsPerPage);
+    const effectiveRowsPerPage = visibleRows || rowsPerPage;
+    const itemsPerPage = GRID_COLUMNS * effectiveRowsPerPage;
+
+    let priorityStart = 0, priorityEnd = Math.min(fullImageList.length - 1, itemsPerPage - 1);
+    if (currentIndex >= 0) {
+      const pageIndex = Math.floor(currentIndex / itemsPerPage);
+      const pageStart = pageIndex * itemsPerPage;
+      const pageEnd = Math.min(fullImageList.length - 1, pageStart + itemsPerPage - 1);
+      const margin = neighborRows * GRID_COLUMNS;
+      priorityStart = Math.max(0, pageStart - margin);
+      priorityEnd = Math.min(fullImageList.length - 1, pageEnd + margin);
+    } else {
+      priorityStart = 0;
+      priorityEnd = Math.min(fullImageList.length - 1, itemsPerPage - 1);
+    }
+
+    // Build DOM placeholders in original order, but only set src for priority indices.
+    container.innerHTML = '';
+    let i = 0;
+    const frag = document.createDocumentFragment();
+
+    function appendBatch() {
+      const end = Math.min(i + batchSize, fullImageList.length);
+      for (; i < end; i++) {
+        const filename = fullImageList[i];
+        const img = document.createElement('img');
+
+        img.alt = filename;
+        img.setAttribute('data-filename', filename);
+        img.setAttribute('data-src', `/thumbs/${encodeURIComponent(currentFolder)}/${encodeURIComponent(filename)}?v=${Date.now()}`);
+        img.draggable = (currentFolder !== 'main');
+
+        // onclick behavior (preserve)
+        img.onclick = () => {
+          if (deleteMode) {
+            if (selectedForDelete.has(filename)) selectedForDelete.delete(filename);
+            else selectedForDelete.add(filename);
+            updateDeleteUI();
+          } else {
+            document.querySelectorAll('.thumbnail-scroll img').forEach(el => el.classList.remove('selected'));
+            img.classList.add('selected');
+            postShow(filename);
+          }
+        };
+
+        if (currentFolder !== 'main') attachDragHandlers(img);
+
+        // priority loading
+        if (i >= priorityStart && i <= priorityEnd) {
+          img.src = img.getAttribute('data-src');
+          img.loading = 'eager';
+          if (filename === currentFilename) {
+            img.classList.add('selected');
+            try { new Image().src = img.src; } catch (e) {}
+          }
+        } else {
+          img.loading = 'lazy';
+          img.decoding = 'async';
+        }
+
+        frag.appendChild(img);
+      }
+
+      if (i < fullImageList.length) {
+        requestAnimationFrame(appendBatch);
+      } else {
+        container.appendChild(frag);
+
+        // Wait for a frame so layout is stable, then compute and apply scroll
+        requestAnimationFrame(() => {
+          if (currentIndex >= 0) {
+            const desiredRowForSlot = 1; // second row (row index 1) to match previous behavior
+            const scrollTop = computeTargetScrollTopFromIndex(currentIndex, container, desiredRowForSlot);
+            container.scrollTo({ top: scrollTop, behavior: 'auto' });
+            setTimeout(() => container.scrollTo({ top: scrollTop, behavior: 'smooth' }), 50);
+          }
+          // Start background fill after we've positioned the user
+          backgroundFillRemainingImages(container);
+        });
+      }
+    }
+
+    appendBatch();
+  } catch (err) {
+    container.innerHTML = `<div class="spinner">Failed to load thumbnails: ${err.message}</div>`;
+    container.setAttribute('aria-busy', 'false');
+    console.error('loadThumbnailsAllBatched error', err);
+  }
+}
+
+// handlers triggered by UI
+function handleSort() {
+  const sortKey = document.getElementById('sort-select').value;
+  currentSort = sortKey;
+  document.getElementById('thumbnail-scroll').innerHTML = '';
+  loadThumbnailsAllBatched(currentSort, 100);
+}
+
+function handleFolderChange() {
+  const selected = document.getElementById('slideshow-select').value;
+  dragEnabled = (selected !== 'main');
+
+  const sortSelect = document.getElementById('sort-select');
+  sortSelect.innerHTML = '';
+
+  const options = [
+    { value: 'newest', label: 'Newest' },
+    { value: 'oldest', label: 'Oldest' },
+    { value: 'az', label: 'A–Z' },
+    { value: 'za', label: 'Z–A' }
+  ];
+
+  if (selected === 'main') {
+    options.unshift({ value: 'random', label: 'Random' });
+  } else {
+    options.unshift({ value: 'custom', label: 'Custom' });
+  }
+
+  options.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.label;
+    sortSelect.appendChild(option);
+  });
+
+  sortSelect.value = (selected === 'main') ? 'random' : 'custom';
+  currentSort = sortSelect.value;
+
+  fetch('/select_folder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `folder=${encodeURIComponent(selected)}`
+  }).then(() => {
+    selectedForDelete.clear();
+    document.getElementById('thumbnail-scroll').innerHTML = '';
+    currentFolder = selected;
+    cachedCurrentFilename = null;
+    loadThumbnailsAllBatched(currentSort, 100);
+  });
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -611,9 +678,9 @@ window.addEventListener('DOMContentLoaded', () => {
   ]).then(([folders, config]) => {
     const select = document.getElementById('slideshow-select');
     const sortSelect = document.getElementById('sort-select');
-    const current = config.current_folder;
+    const current = config.current_folder || '';
 
-    // ✅ Populate slideshow dropdown
+    // populate slideshow dropdown
     folders.forEach(name => {
       const friendlyName = name.replace(/_/g, ' ').replace(/\w\S*/g, word =>
         word.charAt(0).toUpperCase() + word.substring(1).toLowerCase()
@@ -624,46 +691,71 @@ window.addEventListener('DOMContentLoaded', () => {
       select.appendChild(option);
     });
 
-    if (current) {
-      select.value = current;
-    }
+    if (current) select.value = current;
+    currentFolder = current;
 
-    // ✅ Rebuild sort dropdown based on current folder
+    // rebuild sort dropdown
     sortSelect.innerHTML = '';
+    const options = [
+      { value: 'newest', label: 'Newest' },
+      { value: 'oldest', label: 'Oldest' },
+      { value: 'az', label: 'A–Z' },
+      { value: 'za', label: 'Z–A' },
+      { value: 'random', label: 'Random' }
+    ];
+    if (current !== 'main') options.unshift({ value: 'custom', label: 'Custom' });
 
-const options = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'oldest', label: 'Oldest' },
-  { value: 'az', label: 'A–Z' },
-  { value: 'za', label: 'Z–A' },
-  { value: 'random', label: 'Random' }  // ✅ Add this
-];
+    options.forEach(opt => {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.textContent = opt.label;
+      sortSelect.appendChild(option);
+    });
 
-    if (current !== 'main') {
-      options.unshift({ value: 'custom', label: 'Custom' });
-    }
+    sortSelect.value = (current === 'main') ? 'random' : 'custom';
+    currentSort = sortSelect.value;
 
-options.forEach(opt => {
-  const option = document.createElement('option');
-  option.value = opt.value;
-  option.textContent = opt.label;
-  sortSelect.appendChild(option);
-});
+    // hook buttons
+    document.getElementById('enter-delete').addEventListener('click', () => {
+      deleteMode = true;
+      selectedForDelete.clear();
+      document.getElementById('footer-default').style.display = 'flex';
+      document.getElementById('footer-delete').style.display = 'flex';
+      document.getElementById('footer-default').style.display = 'none';
+      updateDeleteUI();
+    });
 
-sortSelect.value = (current === 'main') ? 'random' : 'custom';
-currentSort = sortSelect.value;
+    document.getElementById('exit-delete').addEventListener('click', () => {
+      deleteMode = false;
+      selectedForDelete.clear();
+      document.getElementById('footer-default').style.display = 'flex';
+      document.getElementById('footer-delete').style.display = 'none';
+      updateDeleteUI();
+    });
 
-select.addEventListener('change', handleFolderChange);
-loadThumbnails(currentSort);
+    document.getElementById('confirm-delete').addEventListener('click', () => {
+      if (selectedForDelete.size === 0) return;
+      document.getElementById('deleteModalText').textContent =
+        `Delete ${selectedForDelete.size} items? This cannot be undone.`;
+      document.getElementById('deleteModal').style.display = 'flex';
+    });
+
+    // initial load
+    loadThumbnailsAllBatched(currentSort, 100);
+
+    // Recompute rowsPerPage on resize so prioritization adapts to container changes
+    const container = document.getElementById('thumbnail-scroll');
+    const resizeObserver = new ResizeObserver(() => {
+      const { rowHeight } = computeThumbnailSize(container);
+      rowsPerPage = Math.max(1, Math.floor(container.clientHeight / rowHeight));
+    });
+    resizeObserver.observe(container);
+  }).catch(err => {
+    console.error('Failed to initialize Browse:', err);
   });
-});
 
-window.addEventListener('scroll', () => {
-  const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
-  if (nearBottom) {
-    const sortBy = document.getElementById('sort-select')?.value || 'newest';
-    loadThumbnails(sortBy);
-  }
+  // small periodic preview refresh if you'd like to hook it up:
+  setInterval(refreshCurrentPreview, 5000);
 });
 </script>
 </body>
