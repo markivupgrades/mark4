@@ -816,20 +816,29 @@ def api_thumbnails():
 
     total = len(images)
 
+    # Try to read the current filename we write elsewhere; don't let errors break the endpoint
+    current_filename = None
     try:
-        page = int(request.args.get('page', 1))
-    except ValueError:
-        page = 1
+        with open(os.path.join(BASE_DIR, 'static', 'current_filename.txt')) as f:
+            current_filename = f.read().strip() or None
+    except Exception:
+        current_filename = None
 
-    page_size = 30
-    start = (page - 1) * page_size
-    end = start + page_size
-    paged_images = images[start:end]
+    # Compute the index of the current file in the images list (or -1 if not present)
+    current_index = -1
+    if current_filename and current_filename in images:
+        try:
+            current_index = images.index(current_filename)
+        except Exception:
+            current_index = -1
 
+    # Return all images (no pagination) + current filename/index for client optimization
     return jsonify({
         "folder": folder,
-        "images": paged_images,
-        "total": total
+        "images": images,
+        "total": total,
+        "current": current_filename or "",
+        "current_index": current_index
     })
 
 @app.route('/show', methods=['POST'])
