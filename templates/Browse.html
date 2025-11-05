@@ -351,6 +351,16 @@ function cancelDelete() {
   document.getElementById('deleteModal').style.display = 'none';
 }
 
+/*
+  Changed confirmDelete() to avoid a hard location.reload(). A full reload
+  lets the server-side slideshow state (or a restart) take over and can
+  cause the UI to go back to the desktop/main area after multiple deletes.
+  Instead:
+   - await all delete calls
+   - clear client-side selection state
+   - re-POST the current folder to /select_folder so server keeps the same folder
+   - reload thumbnails in-place via loadThumbnailsAllBatched(...)
+*/
 function confirmDelete() {
   const deletePromises = Array.from(selectedForDelete).map(filename => {
     return fetch('/delete', {
@@ -361,13 +371,31 @@ function confirmDelete() {
   });
 
   Promise.all(deletePromises).then(() => {
+    // Clear selection and footer UI
     selectedForDelete.clear();
     document.getElementById('footer-default').style.display = 'flex';
     document.getElementById('footer-delete').style.display = 'none';
     document.getElementById('deleteModal').style.display = 'none';
     deleteMode = false;
     updateDeleteUI();
-    location.reload();
+
+    // Preserve current folder on server and refresh thumbnails without a hard reload.
+    // This avoids any server-side transitions that a full reload can trigger.
+    cachedCurrentFilename = null;
+    fetch('/select_folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `folder=${encodeURIComponent(currentFolder)}`
+    }).finally(() => {
+      document.getElementById('thumbnail-scroll').innerHTML = '';
+      loadThumbnailsAllBatched(currentSort, 100);
+    });
+  }).catch(err => {
+    console.error('confirmDelete error', err);
+    // recover UI so the user can try again
+    document.getElementById('deleteModal').style.display = 'none';
+    deleteMode = false;
+    updateDeleteUI();
   });
 }
 

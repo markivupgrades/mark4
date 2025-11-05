@@ -898,18 +898,41 @@ function updateDurationLabel(value) {
 }
 
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const slider = document.getElementById('slideshowDuration');
-      const label = document.getElementById('durationLabel');
-      if (slider && label) {
-        label.textContent = `${slider.value} min`;
-      }
-
-      // Keep live updates working as you slide
-      slider.addEventListener('input', () => {
-        label.textContent = `${slider.value} min`;
-      });
+window.addEventListener('DOMContentLoaded', () => {
+  // 🎞️ Slideshow duration setup
+  const slider = document.getElementById('slideshowDuration');
+  const label = document.getElementById('durationLabel');
+  if (slider && label) {
+    label.textContent = `${slider.value} min`;
+    slider.addEventListener('input', () => {
+      label.textContent = `${slider.value} min`;
     });
+  }
+
+  // 🖥️ Sync display mute/unmute button state on load
+  fetch('/display-status')
+    .then(res => res.json())
+    .then(data => {
+      const isMuted = data.displayMuted;
+      const btn = document.getElementById('displayToggleBtn');
+      const thumbnail = document.querySelector('.current-photo-thumbnail');
+      const mutedText = document.getElementById('muted-text');
+      const trashIcon = document.querySelector('.trash-icon');
+      const label = document.querySelector('.current-photo-label');
+      const photoBox = document.querySelector('.current-photo-box');
+      const thumbnailWrapper = document.getElementById('thumbnailWrapper');
+
+      btn.textContent = isMuted ? '🖥️ Unmute Display' : '🖥️ Mute Display';
+      thumbnail.style.display = isMuted ? 'none' : 'block';
+      mutedText.style.display = isMuted ? 'block' : 'none';
+      trashIcon.style.display = isMuted ? 'none' : 'block';
+      label.style.display = isMuted ? 'none' : 'block';
+      photoBox.style.pointerEvents = isMuted ? 'none' : 'auto';
+      thumbnailWrapper.style.display = isMuted ? 'none' : 'flex';
+    })
+    .catch(err => console.error('Error fetching display status:', err));
+});
+
   </script>
 
 <div id="uploading-modal" class="hidden">
