@@ -15,27 +15,19 @@ class Clock:
         self.canvas = tk.Canvas(self.root, width=2560, height=1440)
         self.canvas.pack(fill='both', expand=True)
 
-        # 🔧 Use absolute paths for all images
+        # Absolute path for background
         base_path = "/home/pi/Rolex/png"
         self.background_image = tk.PhotoImage(file=os.path.join(base_path, "RolexPALM.png"))
 
+    # Draw static layers that are behind hands
     def draw_static_layers(self):
         self.canvas.create_image(0, 0, image=self.background_image, anchor='nw')
-        # self.draw_clock_face()  # ❌ Commented out to remove dial numbers
         now = datetime.now()
         self.draw_date(now.day)
-        self.draw_center_ovals()
 
-    def draw_clock_face(self):
-        x0 = 986
-        y0 = 632
-        radius = 498
-        for i in range(1, 13):
-            if i not in [12, 3, 6, 9]:
-                angle = i * math.pi / 6
-                x = x0 + radius * 0.8 * math.sin(angle)
-                y = y0 - radius * 0.8 * math.cos(angle)
-                self.canvas.create_text(x, y, text=str(i), font=('Helvetica', 24, 'bold'))
+    def draw_date(self, day):
+        self.canvas.create_text(1411, 645, text=day, font=('Copperplate', 64), fill='#FCF2E3')
+        self.canvas.create_text(1409, 643, text=day, font=('Copperplate', 64), fill='black', anchor='center')
 
     def draw_center_ovals(self):
         x0 = 988
@@ -44,10 +36,8 @@ class Clock:
         self.canvas.create_oval(x0-38, y0-38, x0+38, y0+38, fill='black')
         self.canvas.create_oval(x0-34, y0-34, x0+34, y0+34, fill='white')
 
-    def draw_date(self, day):
-        self.canvas.create_text(1411, 645, text=day, font=('Copperplate', 64), fill='#FCF2E3')
-        self.canvas.create_text(1409, 643, text=day, font=('Copperplate', 64), fill='black', anchor='center')
 
+    # Draw hour and minute hands
     def draw_hands(self, hour, minute):
         x0 = 988
         y0 = 635
@@ -59,6 +49,7 @@ class Clock:
         minute_x = x0 + 520 * math.sin(minute_angle)
         minute_y = y0 - 520 * math.cos(minute_angle)
 
+        # Hour hand
         self.canvas.create_line(x0, y0, hour_x, hour_y, width=42, fill='white', capstyle=tk.ROUND, tags='main_hands')
         self.canvas.create_line(
             x0 + (hour_x - x0) * ((310 - 60) / 310),
@@ -68,6 +59,7 @@ class Clock:
             fill='gray30', width=10, capstyle=tk.ROUND, tags='main_hands'
         )
 
+        # Minute hand
         self.canvas.create_line(x0, y0, minute_x, minute_y, width=25, fill='white', capstyle=tk.ROUND, tags='main_hands')
         self.canvas.create_line(
             x0 + (minute_x - x0) * ((520 - 70) / 520),
@@ -81,8 +73,10 @@ class Clock:
         self.canvas.delete('main_hands')
         now = datetime.now()
         self.draw_hands(now.hour, now.minute)
+        self.draw_center_ovals()  # ✅ Draw on top of hands
         self.root.after(1000, self.update_main_hands)
 
+    # Draw second hand
     def draw_second_hand(self):
         now = datetime.now()
         seconds = now.second + now.microsecond / 1_000_000
@@ -105,6 +99,7 @@ class Clock:
     def update_second_hand(self):
         self.canvas.delete('second_hand')
         self.draw_second_hand()
+        self.draw_center_ovals()  # ✅ Draw on top of second hand
         self.root.after(50, self.update_second_hand)
 
     def exit_clock(self):
