@@ -29,6 +29,7 @@ allowed_scripts = {
     "Message2.py"
 }
 clock_process = None
+clock_timer = None
 active_clock_name = None
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_ROOT = os.path.join(BASE_DIR, 'static', 'uploads')
@@ -173,33 +174,47 @@ def choose_clock():
     duration = request.args.get('duration', default='15')
     return render_template("clocks.html", duration=duration)
 
+
+def stop_active_clock():
+    """Terminate any currently running clock or billboard safely."""
+    global clock_process, active_clock_name, clock_timer
+    if clock_timer:
+        clock_timer.cancel()
+        clock_timer = None
+
+    if clock_process and clock_process.poll() is None:
+        try:
+            clock_process.terminate()
+            clock_process.wait(timeout=5)
+            app.logger.info(f"Stopped '{active_clock_name}'")
+        except Exception as e:
+            app.logger.error(f"Failed to terminate '{active_clock_name}': {e}")
+    clock_process = None
+    active_clock_name = None
+
+
 @app.route('/launch/<script_name>')
 def launch(script_name):
-    global clock_process, active_clock_name
+    global clock_process, active_clock_name, clock_timer
 
     if not script_name.endswith(".py"):
         script_name += ".py"
-
     if script_name not in allowed_scripts:
         return f"Script not allowed: {script_name}", 403
 
     script_path = os.path.join(script_dir, script_name)
-
     if not os.path.isfile(script_path):
         return f"Script not found: {script_name}", 404
 
     try:
-        # Kill all allowed clock scripts and billboard
-        for name in allowed_scripts:
-            subprocess.call(["pkill", "-f", name])
-        subprocess.call(["pkill", "-f", "billboard.py"])
+        stop_active_clock()  # Kill any existing clock
 
         env = os.environ.copy()
         env["DISPLAY"] = ":0"
         env["XDG_RUNTIME_DIR"] = "/run/user/1000"
 
-        message = request.args.get('message', default='')
-        duration = request.args.get('duration', default='15')
+        message = request.args.get('message', '')
+        duration = request.args.get('duration', '15')
         try:
             duration_minutes = int(duration)
         except ValueError:
@@ -212,30 +227,20 @@ def launch(script_name):
         clock_process = subprocess.Popen(args, env=env)
         active_clock_name = script_name.replace(".py", "")
 
-        # ✅ Schedule termination
-        def stop_clock():
-            try:
-                clock_process.terminate()
-                app.logger.info(f"⏱️ Clock '{script_name}' terminated after {duration_minutes} minutes")
-            except Exception as e:
-                app.logger.error(f"Failed to terminate clock '{script_name}': {e}")
+        # Schedule termination
+        clock_timer = threading.Timer(duration_minutes * 60, stop_active_clock)
+        clock_timer.start()
 
-        threading.Timer(duration_minutes * 60, stop_clock).start()
-
-        # ✅ Pass duration back to /clocks so UI reflects it
         return redirect(url_for('choose_clock', duration=duration))
     except Exception as e:
         return f"Error launching {script_name}: {e}", 500
 
 
-@app.route('/billboard')
-def billboard():
-    duration = request.args.get('duration', '30')
-    return render_template('billboard.html', duration=duration)
-
 @app.route('/launch_billboard')
 def launch_billboard():
-    global clock_process, active_clock_name
+    global clock_process, active_clock_name, clock_timer
+
+    stop_active_clock()  # Kill any existing clock or billboard
 
     message = request.args.get('message', '')
     font = request.args.get('font', 'Copperplate')
@@ -243,9 +248,13 @@ def launch_billboard():
     color = request.args.get('color', 'black')
     background = request.args.get('background', 'Message_Orange')
     duration = request.args.get('duration', '30')
+    try:
+        duration_minutes = int(duration)
+    except ValueError:
+        duration_minutes = 30
 
-    script_path = "/home/pi/Rolex/Message2.py"
-    args = ['python3', script_path, message, font, size, color, background, duration]  # ✅ Passed to script
+    script_path = os.path.join(script_dir, "Message2.py")
+    args = ['python3', script_path, message, font, size, color, background, duration]
 
     env = os.environ.copy()
     env["DISPLAY"] = ":0"
@@ -254,24 +263,26 @@ def launch_billboard():
     clock_process = subprocess.Popen(args, env=env)
     active_clock_name = "Message2"
 
-    return redirect(url_for('choose_clock'))
+    # Schedule termination
+    clock_timer = threading.Timer(duration_minutes * 60, stop_active_clock)
+    clock_timer.start()
+
+    return redirect(url_for('choose_clock', duration=duration))
+
+@app.route('/billboard')
+def billboard():
+    duration = request.args.get('duration', '30')
+    return render_template('billboard.html', duration=duration)
+
+@app.route("/cancel")
+def cancel_clock():
+    stop_active_clock()
+    return redirect(url_for("index"))
 
 @app.route('/message')
 def message():
     duration = request.args.get('duration', '30')  # default to 30 if missing
     return render_template('message.html', duration=duration)
-
-@app.route("/cancel")
-def cancel_clock():
-    global clock_process, active_clock_name
-    if active_clock_name:
-        try:
-            subprocess.run(["pkill", "-f", f"/home/pi/Rolex/{active_clock_name}.py"])
-        except Exception as e:
-            return f"Error stopping {active_clock_name}: {e}"
-    clock_process = None
-    active_clock_name = None
-    return redirect(url_for("index"))
 
 
 @app.route('/current-full')
