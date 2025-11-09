@@ -414,6 +414,14 @@ def zoom_out():
         send_zoom("out")
     return Response(status=204)
 
+def symlink_to_slideshows(folder_name):
+    src = os.path.join('/home/pi/frame-app/static/uploads', folder_name)
+    dst = os.path.join('/home/pi/Slideshows', folder_name)
+
+    # Only create symlink if it doesn't already exist
+    if not os.path.exists(dst):
+        os.symlink(src, dst)
+
 @app.route('/create-slideshow', methods=['POST'])
 def create_slideshow():
     try:
@@ -427,6 +435,8 @@ def create_slideshow():
 
         thumb_path = os.path.join(THUMB_ROOT, 'main', folder)
         os.makedirs(thumb_path, exist_ok=True)
+
+        symlink_to_slideshows(folder)
 
         return '', 204
     except Exception as e:
