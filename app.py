@@ -1009,5 +1009,14 @@ if __name__ == '__main__':
     regenerate_image_order()
     logging.info("Shuffled 'main' at Flask launch.")
 
+    # --- NEW: reset "current image" to first in the new random list ---
+    order_path = os.path.join(BASE_DIR, 'image_order.txt')
+    if os.path.exists(order_path):
+        with open(order_path) as f:
+            images = [line.strip() for line in f if line.strip()]
+        if images:
+            first_image = os.path.join(UPLOAD_ROOT, 'main', images[0])
+            update_viewer_state(first_image, reset_delay=True)
+
     threading.Thread(target=slideshow_loop, daemon=True).start()
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
